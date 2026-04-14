@@ -1,0 +1,30 @@
+source_id: ancient_buddhist_texts
+name: "Ancient Buddhist Texts"
+url: https://ancient-buddhist-texts.net
+
+license:
+  type: open-license
+  name: CC BY 4.0 (most works)
+  url: https://creativecommons.org/licenses/by/4.0/
+  date_confirmed: 2026-01-15
+
+copyright_holder: Anandajoti Bhikkhu (most works)
+
+permissions:
+  attribution_required: true
+  commercial_use: allowed
+  derivative_works: allowed
+
+usage_in_project:
+  - Pali texts with translations (Anandajoti Bhikkhu)
+  - Comparative studies
+  - Prosodic analysis of Pali verse
+
+statistics:
+  chunks_ingested: 0
+  status: pending
+  notes: 3712 HTML files to process
+
+notes: |
+  Very permissive CC BY license — ideal for RAG.
+  Good neighbor: credit Anandajoti Bhikkhu properly.

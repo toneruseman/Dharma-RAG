@@ -1,0 +1,42 @@
+source_id: academic_papers
+name: "Open Access Academic Papers"
+url: multiple sources
+
+license:
+  type: open-license
+  name: CC BY 4.0 (predominantly)
+  url: https://creativecommons.org/licenses/by/4.0/
+  date_confirmed: 2026-01-15
+
+copyright_holder: Various (individual paper authors)
+
+permissions:
+  attribution_required: true
+  commercial_use: allowed
+  derivative_works: allowed
+
+sources:
+  - PubMed Central (pmc.ncbi.nlm.nih.gov)
+  - MDPI journals
+  - PLoS ONE
+  - Frontiers
+
+search_terms:
+  - vipassana
+  - mindfulness meditation
+  - jhana
+  - Buddhist meditation
+  - contemplative neuroscience
+
+usage_in_project:
+  - 59 papers processed
+  - Empirical/neuroscience studies of meditation
+
+statistics:
+  chunks_ingested: 1294
+  first_ingest_date: 2026-02-15
+
+notes: |
+  Per-paper license tracking required.
+  We only include papers with explicit CC BY or CC0.
+  Each paper has its DOI preserved in metadata.

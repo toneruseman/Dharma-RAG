@@ -1,0 +1,83 @@
+services:
+  # ========================================================================
+  # Qdrant — Vector Database
+  # ========================================================================
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    container_name: dharma-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__LOG_LEVEL: INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================================================
+  # Langfuse — LLM Observability
+  # ========================================================================
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: dharma-langfuse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: ${LANGFUSE_DB_PASSWORD:-changeme}
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: dharma-langfuse
+    restart: unless-stopped
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:${LANGFUSE_DB_PASSWORD:-changeme}@langfuse-db:5432/langfuse
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-changeme-32-char-string-for-secret}
+      SALT: ${LANGFUSE_SALT:-changeme-salt-string}
+      NEXTAUTH_URL: http://localhost:3000
+      TELEMETRY_ENABLED: "false"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "true"
+
+  # ========================================================================
+  # FastAPI app (uncomment when ready)
+  # ========================================================================
+  # app:
+  #   build: .
+  #   container_name: dharma-app
+  #   restart: unless-stopped
+  #   depends_on:
+  #     qdrant:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     QDRANT_URL: http://qdrant:6333
+  #     LANGFUSE_HOST: http://langfuse:3000
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./src:/app/src
+  #     - ./data:/app/data
+
+volumes:
+  qdrant_storage:
+  langfuse_db_data:

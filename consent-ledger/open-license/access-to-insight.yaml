@@ -1,0 +1,55 @@
+source_id: access_to_insight
+name: Access to Insight
+url: https://www.accesstoinsight.org
+
+license:
+  type: open-license
+  name: Custom Free Distribution
+  url: https://www.accesstoinsight.org/faq.html#copyright
+  date_confirmed: 2026-01-15
+  text_at_source: |
+    "Unless otherwise noted, you may freely: (1) download, copy, reformat,
+    reprint, republish, redistribute; (2) re-use; (3) translate these works —
+    provided that you do not charge any money for them. You may not sell
+    these works or derivatives thereof."
+
+copyright_holder: Individual authors/translators (varies per text)
+copyright_contact: webmaster@accesstoinsight.org
+
+permissions:
+  attribution_required: true
+  commercial_use: denied
+  derivative_works: allowed
+  share_alike: false
+
+usage_in_project:
+  - ~1000 curated sutta translations from various translators
+  - 700+ articles, essays, books on Buddhist topics
+  - Comprehensive index by topic, teacher, sutta number
+
+our_commitments:
+  - Never charge for access to our service
+  - Attribute original translators in metadata
+  - Citations link back to accesstoinsight.org
+  - No redistribution of raw text
+
+statistics:
+  chunks_ingested: 25842
+  first_ingest_date: 2026-02-10
+
+explicit_permission:
+  requested: false
+  required: false
+  notes: |
+    Per-text licenses vary. Default is the site-wide free distribution.
+    We respect any work marked with more restrictive terms by excluding.
+
+exclusions:
+  - Any work marked "all rights reserved" or with more restrictive terms
+  - Translations by Bhikkhu Bodhi (Wisdom Publications copyright)
+  - Recent translations not explicitly free-distribution
+
+notes: |
+  Not actively updated since 2013, but remains authoritative.
+  Per-text license tracking required — some works have their own
+  copyright notices that override site-wide default.

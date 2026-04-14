@@ -1,0 +1,39 @@
+source_id: pts_cc_works
+name: "Pali Text Society — CC-Licensed Works"
+url: https://palitextsociety.org/copyright-information/
+
+license:
+  type: open-license
+  name: CC BY-NC 3.0 and CC BY-NC 4.0 (varies by work)
+  url: https://creativecommons.org/licenses/by-nc/3.0/
+  date_confirmed: 2026-01-15
+
+copyright_holder: Pali Text Society
+copyright_contact: office@palitextsociety.org
+
+permissions:
+  attribution_required: true
+  commercial_use: denied
+  derivative_works: allowed
+
+usage_in_project:
+  - Pali-English Dictionary (Rhys Davids & Stede)
+  - Vinaya (Horner translation, 6 vols)
+  - Majjhima Nikaya (Horner translation, 3 vols)
+  - Samyutta Nikaya (Rhys Davids & Woodward, 5 vols)
+  - Anguttara Nikaya (Woodward & Hare, 5 vols)
+  - Dispeller of Delusion (Nanamoli)
+  - The Guide (Nanamoli)
+  - Minor Readings (Nanamoli)
+  - Path of Discrimination (Nanamoli)
+  - Pitaka Disclosure (Nanamoli)
+
+statistics:
+  chunks_ingested: 0
+  status: pending
+  notes: Requires OCR from PDF scans (~450 MB)
+
+notes: |
+  11 works under CC BY-NC 3.0, 5 works under CC BY-NC 4.0.
+  All non-commercial use, attribution required.
+  OCR challenge for older scans.

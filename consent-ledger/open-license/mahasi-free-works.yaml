@@ -1,0 +1,30 @@
+source_id: mahasi_free_works
+name: "Mahasi Sayadaw — Free Distribution Works"
+url: https://www.buddhanet.net
+
+license:
+  type: open-license
+  name: Free Distribution
+  date_confirmed: 2026-01-15
+
+copyright_holder: Mahasi Meditation Center (various)
+
+permissions:
+  attribution_required: true
+  commercial_use: denied
+  derivative_works: allowed
+
+usage_in_project:
+  - "Practical Insight Meditation"
+  - "Progress of Insight"
+  - "Satipatthana Vipassana"
+
+EXCLUSIONS_CRITICAL:
+  - "Manual of Insight" (Wisdom Publications copyright — DO NOT INGEST)
+
+statistics:
+  chunks_ingested: 235
+
+notes: |
+  Only older free-distribution works included.
+  Modern "Manual of Insight" is commercially copyrighted.

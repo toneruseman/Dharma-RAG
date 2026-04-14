@@ -1,0 +1,57 @@
+source_id: dhammatalks_org
+name: DhammaTalks.org (Thanissaro Bhikkhu and Metta Forest Monastery)
+url: https://www.dhammatalks.org
+
+license:
+  type: open-license
+  name: CC BY-NC 4.0
+  url: https://creativecommons.org/licenses/by-nc/4.0/
+  date_confirmed: 2026-01-15
+  text_at_source: |
+    "Copyright © 2024 Metta Forest Monastery. This work is licensed
+    under the Creative Commons Attribution-NonCommercial 4.0 International
+    Public License. To view a copy of the license, visit
+    http://creativecommons.org/licenses/by-nc/4.0/. 'Commercial' shall
+    mean any sale, whether for commercial or non-profit purposes or entities."
+
+copyright_holder: Metta Forest Monastery
+copyright_contact: mmfm@dhammatalks.org
+
+permissions:
+  attribution_required: true
+  commercial_use: denied
+  derivative_works: allowed
+  share_alike: false
+
+usage_in_project:
+  - Sutta translations (DN, MN, SN, AN, KN)
+  - Books by Thanissaro Bhikkhu
+  - Translated works of Ajahn Lee, Ajahn Fuang, Ajahn Mun
+  - Translations in multiple languages (en, th, fr, es, de, pt, ru, fi, sv, uk)
+
+our_commitments:
+  - Project remains 100% free, non-commercial forever
+  - No paid tier, no ads, no subscriptions
+  - Every citation links back to dhammatalks.org
+  - No redistribution of raw text
+  - Audio files handled separately (with explicit permission if needed)
+
+statistics:
+  chunks_ingested: 19425
+  first_ingest_date: 2026-02-01
+
+explicit_permission:
+  requested: false
+  required: false
+  notes: |
+    CC BY-NC 4.0 terms are clear for our non-commercial use.
+    We intend to reach out as courtesy before public launch (Phase 4).
+
+exclusions:
+  - Copyrighted materials of other authors mentioned but not originally
+    from DhammaTalks (check individual works)
+
+notes: |
+  The most important text source after SuttaCentral.
+  Strict non-commercial clause means we can never add monetization.
+  "Any sale" includes selling to nonprofits — fully non-commercial.

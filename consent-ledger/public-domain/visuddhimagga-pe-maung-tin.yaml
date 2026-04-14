@@ -1,0 +1,30 @@
+source_id: visuddhimagga_pe_maung_tin
+name: "Visuddhimagga (The Path of Purity) — Pe Maung Tin translation"
+url: https://archive.org/details/pathofpuritybein01budduoft
+
+license:
+  type: public-domain
+  name: Public Domain (pre-1928 publication)
+  date_confirmed: 2026-01-15
+  text_at_source: |
+    "Published 1923-1931. Translator Pe Maung Tin died 1973.
+    Life + 50 years expired in most jurisdictions."
+
+copyright_holder: Pe Maung Tin (deceased 1973)
+
+permissions:
+  attribution_required: false
+  commercial_use: allowed
+  derivative_works: allowed
+
+usage_in_project:
+  - Complete English translation of Buddhaghosa's Visuddhimagga
+
+statistics:
+  chunks_ingested: 564
+  first_ingest_date: 2026-03-01
+
+notes: |
+  Archaic English but complete. Modern Nanamoli translation
+  is under PTS copyright (see pts-cc-works.yaml).
+  Pe Maung Tin is historically important first English translation.

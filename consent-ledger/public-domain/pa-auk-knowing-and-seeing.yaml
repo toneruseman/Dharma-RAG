@@ -1,0 +1,28 @@
+source_id: pa_auk_knowing_and_seeing
+name: "Pa Auk Sayadaw — Knowing and Seeing"
+url: https://archive.org/details/KnowingAndSeeing
+
+license:
+  type: public-domain
+  name: Public Domain (explicit author dedication)
+  date_confirmed: 2026-01-15
+  text_at_source: "Explicitly marked as Public Domain by the author"
+
+copyright_holder: Pa Auk Sayadaw (public domain dedication)
+
+permissions:
+  attribution_required: false
+  commercial_use: allowed
+  derivative_works: allowed
+
+usage_in_project:
+  - Complete text of "Knowing and Seeing" — 346 pages of detailed
+    jhāna and vipassanā instruction
+
+statistics:
+  chunks_ingested: 0
+  status: pending
+
+notes: |
+  One of the most detailed available jhāna manuals.
+  Pa Auk tradition representative work.

@@ -1,0 +1,51 @@
+source_id: suttacentral
+name: SuttaCentral Bilara Translations
+url: https://suttacentral.net
+data_url: https://github.com/suttacentral/bilara-data
+
+license:
+  type: public-domain
+  name: CC0 1.0 Universal
+  url: https://creativecommons.org/publicdomain/zero/1.0/
+  date_confirmed: 2026-01-15
+  text_at_source: |
+    "All translations created in Bilara and supported by SuttaCentral
+    are dedicated to the Public Domain by means of the Creative Commons
+    Public Domain (CC0) license."
+
+copyright_holder: SuttaCentral (dedicated to public domain)
+copyright_contact: admin@suttacentral.net
+
+permissions:
+  attribution_required: false
+  commercial_use: allowed
+  derivative_works: allowed
+  share_alike: false
+
+usage_in_project:
+  - Digha Nikaya (DN) — Bhikkhu Sujato translation
+  - Majjhima Nikaya (MN) — Bhikkhu Sujato translation
+  - Samyutta Nikaya (SN) — Bhikkhu Sujato translation
+  - Anguttara Nikaya (AN) — Bhikkhu Sujato translation
+  - Khuddaka Nikaya — Bhikkhu Sujato translation
+  - Translations in EN, RU, DE, PT, ES
+
+our_commitments:
+  - We attribute to SuttaCentral as good practice (not legally required)
+  - Each citation includes link back to suttacentral.net
+  - We preserve translator attributions in metadata
+
+statistics:
+  chunks_ingested: 9324
+  languages: [en, ru, de, pt, es]
+  first_ingest_date: 2026-01-20
+  last_update: 2026-04-14
+
+explicit_permission:
+  requested: false
+  required: false
+
+notes: |
+  SuttaCentral is the gold standard for Buddhist text access.
+  Public domain dedication means we have maximum freedom.
+  Good neighbor policy: reach out to team on major uses.
