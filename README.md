@@ -133,3 +133,9 @@ dharma-rag/
 - Issues: [github.com/toneruseman/dharma-rag/issues](https://github.com/toneruseman/dharma-rag/issues)
 
 > "Sabbe sattā sukhitā hontu" — Пусть все существа будут счастливы.
+
+## Статус разработки
+
+🚀 **Начало разработки:** 14 апреля 2026
+📍 **Текущая фаза:** Phase 0 — Setup (дни 1-3)
+🎯 **Следующий milestone:** v0.1.0 — Foundation (день 14)
