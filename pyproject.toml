@@ -119,6 +119,9 @@ voice = [
 [project.scripts]
 dharma-rag = "src.cli:main"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
