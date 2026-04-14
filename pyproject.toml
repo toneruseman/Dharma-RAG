@@ -119,6 +119,9 @@ voice = [
 [project.scripts]
 dharma-rag = "src.cli:main"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
@@ -131,6 +134,12 @@ ignore = ["E501", "S101"]
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
