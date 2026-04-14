@@ -5,6 +5,7 @@ Test setup script — run after `pip install -e .[dev]` to verify environment.
 Usage:
     python scripts/test_setup.py
 """
+
 from __future__ import annotations
 
 import os
@@ -39,12 +40,15 @@ def main() -> int:
     print("\n[2/6] Environment file:")
     env_path = Path(".env")
     ok = env_path.exists()
-    all_ok &= check(".env exists", ok, str(env_path.absolute()) if ok else "create from .env.example")
+    all_ok &= check(
+        ".env exists", ok, str(env_path.absolute()) if ok else "create from .env.example"
+    )
 
     if ok:
         # Try to load
         try:
             from dotenv import load_dotenv
+
             load_dotenv()
             check("dotenv loaded", True)
         except ImportError:
@@ -78,6 +82,7 @@ def main() -> int:
     print("\n[4/6] Anthropic API:")
     try:
         from anthropic import Anthropic
+
         api_key = os.getenv("ANTHROPIC_API_KEY", "")
         if api_key and not api_key.startswith("sk-ant-..."):
             client = Anthropic(api_key=api_key)
@@ -87,7 +92,11 @@ def main() -> int:
                 max_tokens=10,
                 messages=[{"role": "user", "content": "ping"}],
             )
-            check("API call successful", True, f"used {resp.usage.input_tokens} in, {resp.usage.output_tokens} out tokens")
+            check(
+                "API call successful",
+                True,
+                f"used {resp.usage.input_tokens} in, {resp.usage.output_tokens} out tokens",
+            )
         else:
             all_ok &= check("API call test", False, "set ANTHROPIC_API_KEY")
     except Exception as e:
@@ -97,6 +106,7 @@ def main() -> int:
     print("\n[5/6] Qdrant connection:")
     try:
         from qdrant_client import QdrantClient
+
         qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
         client = QdrantClient(url=qdrant_url, timeout=5)
         collections = client.get_collections()
@@ -116,6 +126,7 @@ def main() -> int:
     print("\n[6/6] Langfuse (optional):")
     try:
         import httpx
+
         langfuse_host = os.getenv("LANGFUSE_HOST", "http://localhost:3000")
         r = httpx.get(f"{langfuse_host}/api/public/health", timeout=5)
         check("Langfuse reachable", r.status_code == 200, langfuse_host)

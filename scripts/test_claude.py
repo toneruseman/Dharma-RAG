@@ -5,6 +5,7 @@ Hello-world test for the Claude API via the Dharma RAG config layer.
 Usage:
     python scripts/test_claude.py
 """
+
 from __future__ import annotations
 
 import sys

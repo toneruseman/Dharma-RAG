@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import structlog
-
 from src.logging_config import get_logger, setup_logging
 
 

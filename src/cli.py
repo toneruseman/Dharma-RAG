@@ -15,9 +15,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="dharma-rag",
         description="Open-source multilingual RAG for Buddhist contemplative teachings",
     )
-    parser.add_argument(
-        "--version", action="version", version=f"%(prog)s {__version__}"
-    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
