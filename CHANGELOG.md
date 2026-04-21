@@ -11,6 +11,7 @@
 
 ### Added
 - **rag-day-07:** Parent/child structural chunker in `src/processing/chunker.py`. Pure, dependency-free: produces parents (target 1536 / max 2048 tokens, broken at paragraph boundaries) and children (target 384 / max 512, broken at segment boundaries). `TokenCounter` injected via DI for future BGE-M3 tokenizer swap. SuttaCentral loader rewired to emit parent+child instead of flat per-segment rows. `scripts/rechunk.py` rebuilds existing Instances in-place (ran on live DB: 124,532 flat → 10,227 structured chunks = 3,749 parents + 6,478 children, 48 s, 0 orphan children). 18 unit + 1 rechunk-idempotency integration test added (79 total passing).
+- **rag-day-08:** BGE-M3 encoder wrapper (`src/embeddings/bge_m3.py`). Lazy model load (2.3 GB weights only fetched on first `encode` call), thread-safe via `threading.Lock`, structural-type `BGEM3ModelProtocol` for DI-friendly unit testing (22 unit tests, no real model loaded). Device detection (auto/cuda/cpu) with fp16 auto-selection that mirrors FlagEmbedding's own CPU-forces-fp32 rule. `scripts/test_bge_m3.py` — smoke test on N chunks from Postgres (cosine determinism check, shape gates, top-5 sparse weights preview). `transformers<5` pin added because FlagEmbedding 1.3.5 uses pre-5.x APIs. Verified end-to-end on CPU: dense 1024-d self-similarity = 1.0, cross-similarity ~0.48-0.50, sparse weights non-empty on rare tokens.
 
 ---
 
