@@ -1,5 +1,26 @@
 services:
   # ========================================================================
+  # Dharma DB — Postgres for FRBR corpus + app tables
+  # ========================================================================
+  dharma-db:
+    image: postgres:16-alpine
+    container_name: dharma-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: dharma
+      POSTGRES_USER: dharma
+      POSTGRES_PASSWORD: ${DHARMA_DB_PASSWORD:-dharma_dev}
+    volumes:
+      - dharma_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dharma -d dharma"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================================================================
   # Qdrant — Vector Database
   # ========================================================================
   qdrant:
@@ -81,3 +102,4 @@ services:
 volumes:
   qdrant_storage:
   langfuse_db_data:
+  dharma_db_data:

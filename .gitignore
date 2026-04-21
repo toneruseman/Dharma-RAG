@@ -68,7 +68,12 @@ chroma_db/
 *.safetensors
 *.gguf
 *.onnx
+# Ignore ML model artefacts anywhere in the tree, but keep our ORM
+# model source under version control. __pycache__ is still ignored
+# via the global rule above.
 models/
+!src/db/models/
+!src/db/models/*.py
 
 # Logs
 *.log

@@ -44,6 +44,13 @@ dependencies = [
     # Vector DB
     "qdrant-client>=1.12.0",
 
+    # Relational DB — FRBR corpus + app tables
+    "sqlalchemy[asyncio]>=2.0.35",
+    "asyncpg>=0.30.0",  # async driver
+    "psycopg[binary]>=3.2.0",  # sync driver for Alembic
+    "alembic>=1.14.0",
+    "greenlet>=3.1.0",  # required by SQLAlchemy async
+
     # Search
     "rank-bm25>=0.2.2",
 
