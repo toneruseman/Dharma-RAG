@@ -4,7 +4,7 @@
 
 > **Dharma-RAG** is an open-source study companion for Buddhist practice and canon.
 >
-> Ask about a meditation technique, a sutta passage, or a Pāli term — the system finds precise passages in a curated corpus (the Pāli Canon plus teachings from contemporary masters), cites every source, and answers in your language. Focus areas: **Theravāda**, **jhāna traditions**, and **pragmatic dharma**.
+> Ask about a meditation technique, a sutta passage, or a Pāli term — the system finds precise passages in a curated corpus, cites every source, and answers in your language.
 >
 > MIT-licensed. No accounts, no subscriptions, no ads.
 
