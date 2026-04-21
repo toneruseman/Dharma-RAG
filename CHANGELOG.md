@@ -9,17 +9,35 @@
 
 ## [Unreleased]
 
+_Nothing yet. Work begins on rag-day-07 (parent/child structural chunker)._
+
+---
+
+## [0.0.2] — 2026-04-21
+
+Ingest foundation release. The first actual code drop after the `v0.0.1`
+scaffolding tag: Postgres corpus, SuttaCentral ingest pipeline, and the
+text cleaner are all running. No retrieval / rerank / generation yet —
+those land progressively through days 7-21 and ship in `v0.1.0`.
+
 ### Added
-- Initial repository structure
-- Complete documentation (ARCHITECTURE_REVIEW, DAY_BY_DAY_PLAN, etc.)
-- docker-compose.yml for local development
-- Consent Ledger framework
 - **rag-day-01:** FastAPI `/health` endpoint, Pydantic Settings, structlog, tests, ADR-0001.
 - **rag-day-02:** Postgres corpus database (`dharma-db` in docker-compose), SQLAlchemy 2.x async models for FRBR (Work → Expression → Instance → Chunk) plus lookup tables (`tradition_t`, `language_t`, `author_t`), Alembic migration `001_initial_frbr` with seed data (7 traditions, 15 ISO 639-3 languages), integration tests for schema/models/migration-idempotency.
 - **rag-day-03:** SuttaCentral bilara-data ingest skeleton: typed `BilaraFile`/`Segment` dataclasses, streaming `iter_bilara_files`/`iter_segments` parser with filename and nikaya derivation, `scripts/sc_dryrun.py` CLI that emits 10 segments from sujato's MN translation, 13 unit tests using an in-memory bilara fixture. No DB writes yet — persistence comes in rag-day-04.
 - **rag-day-04:** Full SuttaCentral ingest into Postgres for sujato's English MN/DN/SN/AN (3,413 Works / 124,532 Chunks). Alembic migration `002_author_slug_sc_seeds` adds `author_t.slug` (unique partial index) and seeds `sujato` + `ms`. New `src/ingest/suttacentral/loader.py` with `load_file` / `load_directory` performs idempotent upserts keyed by `content_hash`, inserts one `Chunk` per bilara segment (cleaning and parent/child chunking come later), and enforces license/consent-ledger stamping at the Expression level. `scripts/ingest_sc.py` wraps the loader as an async CLI. 4 integration tests cover the full FRBR roundtrip, idempotency, unknown-author rejection, and multi-file directory loads.
 - **rag-day-06:** Text cleaner pipeline (`src/processing/cleaner.py`): `to_canonical` applies HTML entity decode, tag strip, Unicode NFC, IAST anusvāra harmonisation (`ṁ → ṃ`), and whitespace collapse; `to_ascii_fold` produces a BM25-friendly diacritic-stripped shadow (`satipaṭṭhāna → satipatthana`). 27 unit tests cover Pali-specific edge cases. SC loader now populates both `chunk.text` (canonical) and `chunk.text_ascii_fold`, plus canonicalises work/expression titles. `scripts/reclean_chunks.py` backfills the fold column on pre-day-6 rows in place (ran successfully: 124,532 chunks scanned, 111,601 updated, 100 s).
-- **docs:** `docs/APP_DEVELOPMENT_PLAN.md` (60-day plan for app layer) and `docs/STATUS.md` (unified progress tracker). Strategy B adopted: RAG-first through `v0.1.0` (rag-day-21), then interleave with app-track.
+- **docs:** `docs/APP_DEVELOPMENT_PLAN.md` (60-day plan for app layer), `docs/STATUS.md` (unified progress tracker), `docs/Dharma-RAG-Research-EN.md` (3432-line English research). README rewritten to reflect real state.
+
+### Changed
+- Project version in `pyproject.toml` and `src/__init__.py` aligned from aspirational `0.1.0` down to honest `0.0.2`. `0.1.0` is reserved for the day-21 Foundation milestone.
+
+### Strategy
+- **Strategy B** adopted: RAG-first through `v0.1.0` (rag-day-21), then interleave with app-track. Captured in `docs/STATUS.md`.
+
+### Known limitations
+- No retrieval, no reranking, no `/api/query` endpoint — only `/health` responds.
+- Single source (SuttaCentral sujato EN, MN/DN/SN/AN). DhammaTalks, ATI, PTS, etc. arrive in Phase 2+.
+- No golden evaluation set yet — gate on rag-day-05 is blocked pending buddhologist collaboration (see `docs/STATUS.md` blocker B-001).
 
 ---
 
