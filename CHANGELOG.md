@@ -16,6 +16,7 @@
 - Consent Ledger framework
 - **rag-day-01:** FastAPI `/health` endpoint, Pydantic Settings, structlog, tests, ADR-0001.
 - **rag-day-02:** Postgres corpus database (`dharma-db` in docker-compose), SQLAlchemy 2.x async models for FRBR (Work → Expression → Instance → Chunk) plus lookup tables (`tradition_t`, `language_t`, `author_t`), Alembic migration `001_initial_frbr` with seed data (7 traditions, 15 ISO 639-3 languages), integration tests for schema/models/migration-idempotency.
+- **rag-day-03:** SuttaCentral bilara-data ingest skeleton: typed `BilaraFile`/`Segment` dataclasses, streaming `iter_bilara_files`/`iter_segments` parser with filename and nikaya derivation, `scripts/sc_dryrun.py` CLI that emits 10 segments from sujato's MN translation, 13 unit tests using an in-memory bilara fixture. No DB writes yet — persistence comes in rag-day-04.
 - **docs:** `docs/APP_DEVELOPMENT_PLAN.md` (60-day plan for app layer) and `docs/STATUS.md` (unified progress tracker). Strategy B adopted: RAG-first through `v0.1.0` (rag-day-21), then interleave with app-track.
 
 ---
