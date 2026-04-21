@@ -1,191 +1,183 @@
-# Dharma RAG
+# Dharma-RAG
 
-> Открытая, бесплатная, мультиязычная RAG-платформа для буддийских созерцательных учений (Тхеравада, практика джханы, прагматическая дхарма). Пользователи задают вопросы о медитации/буддизме/дхарме голосом или текстом — система находит релевантные отрывки в курируемом корпусе реальных учений и генерирует обоснованные ответы со ссылками на источники, на языке пользователя.
+🇬🇧 **English** · [🇷🇺 Русский](README.ru.md)
+
+> **Dharma-RAG** is an open-source study companion for Buddhist practice and canon.
+>
+> Ask about a meditation technique, a sutta passage, or a Pāli term — the system finds precise passages in a curated corpus (the Pāli Canon plus teachings from contemporary masters), cites every source, and answers in your language. Focus areas: **Theravāda**, **jhāna traditions**, and **pragmatic dharma**.
+>
+> MIT-licensed. No accounts, no subscriptions, no ads.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Status: Pre-Alpha](https://img.shields.io/badge/Status-Pre--Alpha-orange)]()
-[![Phase: 1 (MVP)](https://img.shields.io/badge/Phase-1%20MVP-blue)]()
+[![Phase: 1 Foundation](https://img.shields.io/badge/Phase-1%20Foundation-blue)]()
+[![Release: v0.0.2](https://img.shields.io/badge/Release-v0.0.2-green)](https://github.com/toneruseman/Dharma-RAG/releases/tag/v0.0.2)
 
 ---
 
-## Миссия
+## Mission
 
-Сделать мудрость созерцательных традиций доступной каждому практикующему на любом языке, с верностью оригинальным учениям.
+Make the wisdom of contemplative traditions accessible to every practitioner, in every language, with faithfulness to the original teachings.
 
-## Принципы
+## Principles
 
-1. **Grounded RAG, не chatbot** — каждый ответ цитирует источники
-2. **100% бесплатно, open-source (MIT)** — без рекламы, регистрации, подписок
-3. **Dual-track development** — публичный код использует только разрешённый контент
-4. **Consent Ledger** — публичный YAML-реестр разрешений на каждый источник
-5. **Tool, not teacher** — помогает находить учения, не заменяет учителей
-6. **Privacy by default** — нулевой сбор пользовательских данных на сервере
-
----
-
-## Что сделано (Phase 1 — день 6 из 21)
-
-- ✅ Docker Compose стек для локальной разработки: Postgres 16 (`dharma-db`) + Qdrant + Langfuse
-- ✅ Postgres FRBR schema (Work → Expression → Instance → Chunk) + Alembic миграции
-- ✅ Ingest pipeline SuttaCentral: **3 413 сутт / 124 532 чанка** из переводов Бхиккху Суджато (MN/DN/SN/AN), идемпотентный (повторный запуск — no-op)
-- ✅ Text cleaner: Unicode NFC, Pali IAST нормализация (`ṁ → ṃ`), ASCII-fold колонка (`satipaṭṭhāna → satipatthana`) для BM25 поиска
-- ✅ FastAPI `/health` endpoint
-- 🔄 Parent/child chunker (день 7)
-
-## Что планируется в Phase 1 (дни 7-21)
-
-- ⏳ Parent/child структурное chunking (384 / 1024-2048 токенов) — день 7
-- ⏳ BGE-M3 embeddings (dense 1024d + sparse) и Qdrant indexing с named vectors — дни 8-10
-- ⏳ BM25 через Postgres FTS с Pali-aware токенизацией — день 11
-- ⏳ Hybrid retrieval через RRF (Reciprocal Rank Fusion) — день 12
-- ⏳ Reranking (BGE-reranker-v2-m3 на GPU) — день 13
-- ⏳ Baseline eval через Ragas (faithfulness, ref_hit@5) — день 14
-- ⏳ Contextual Retrieval (префикс Claude Haiku) — дни 15-17
-- ⏳ `POST /api/query` endpoint — день 19
-- ⏳ **v0.1.0 релиз** — день 21
-- ⏳ Дополнительные источники (DhammaTalks.org, Access to Insight, ...) — Phase 2+
-- ⏳ Web UI (HTMX + SSE streaming), Telegram bot (aiogram 3.x) — APP-трек, отдельный план
-
-## Видение Phase 2 / Phase 3 (месяцы 3-12)
-
-**Phase 2 (Месяцы 3-6):**
-- Мобильные приложения Android/iOS (Capacitor + SvelteKit)
-- Композитор ретритов
-- Генератор уроков
-- Концепт-графы (Cytoscape.js)
-- Voice MVP (Pipecat + Deepgram + ElevenLabs)
-- Транскрипция всего корпуса Dharmaseed (~46 000 лекций)
-
-**Phase 3 (Месяцы 6-12):**
-- Live voice chat (LiveKit Agents, <800ms задержка)
-- On-device STT/TTS (Sherpa-ONNX) для приватности
-- Audio companion для медитации
-- LightRAG knowledge graph
-- Curriculum planner с интервальными повторениями
+1. **Grounded RAG, not chatbot** — every answer cites its sources.
+2. **Free and open-source (MIT)** — no ads, sign-ups, or subscriptions.
+3. **Dual-track development** — the public codebase only ships content we are allowed to ship.
+4. **Consent Ledger** — every source in the corpus has a matching YAML record explaining how we got permission.
+5. **Tool, not teacher** — Dharma-RAG helps you find teachings; it does not replace a living teacher or a qualified clinician.
+6. **Privacy by default** — no user-data collection on our servers.
 
 ---
 
-## Быстрый старт
+## Status (Phase 1 — day 7 of 21)
 
-### Требования
+### Shipped
 
-- Python **3.12+** (проверено на 3.12.10)
-- Docker + Docker Compose (для локального стека Postgres / Qdrant / Langfuse)
-- ~10 GB свободного места (клон `bilara-data` + будущий векторный индекс)
-- Опционально: NVIDIA GPU с ≥12 GB VRAM для reranker (добавится на дне 13)
+- ✅ Local dev stack via Docker Compose: Postgres 16 (`dharma-db`) + Qdrant + Langfuse.
+- ✅ Postgres FRBR schema (Work → Expression → Instance → Chunk) with Alembic migrations.
+- ✅ SuttaCentral ingest pipeline: **3,413 suttas / 10,227 chunks** (3,749 parents + 6,478 children) from Bhikkhu Sujato's English translations of MN/DN/SN/AN. Idempotent re-runs via `content_hash`.
+- ✅ Text cleaner: Unicode NFC, Pāli IAST canonicalisation (`ṁ → ṃ`), ASCII-fold shadow column (`satipaṭṭhāna → satipatthana`) for BM25 matching.
+- ✅ Parent/child structural chunker (parent ~1,536 tokens, child ~384 tokens) — the Parent Document Retrieval pattern.
+- ✅ FastAPI `/health` endpoint, structured logging via structlog.
+- ✅ 79 tests (65 unit + 14 integration), pre-commit gating on ruff / mypy / detect-secrets.
 
-### Установка
+### In flight (days 8-21)
+
+- ⏳ BGE-M3 embeddings (dense 1024d + sparse) with Qdrant named vectors (days 8-10).
+- ⏳ BM25 over Postgres FTS with Pāli-aware tokenisation (day 11).
+- ⏳ Hybrid retrieval via Reciprocal Rank Fusion (day 12).
+- ⏳ Reranking with BGE-reranker-v2-m3 on GPU (day 13).
+- ⏳ Baseline eval through Ragas — faithfulness, ref_hit@5, citation_validity (day 14).
+- ⏳ Contextual Retrieval (Claude Haiku context prefixes) — days 15-17.
+- ⏳ `POST /api/query` endpoint (day 19).
+- ⏳ **v0.1.0 release** (day 21).
+
+### Longer horizon
+
+- **Phase 2** (months 3-6) — expanded corpus (DhammaTalks.org, Access to Insight, PTS, academic papers), fine-tuned BGE-M3, Pāli glossary, regression CI, 100-question golden set.
+- **Phase 3** (months 6-12) — mobile apps (Capacitor + SvelteKit), voice MVP (Pipecat + Deepgram + ElevenLabs), Dharmaseed audio corpus (~46,000 talks), live voice chat via LiveKit Agents, on-device STT/TTS (Sherpa-ONNX) for privacy.
+
+---
+
+## Quick start
+
+### Requirements
+
+- **Python 3.12+** (tested on 3.12.10).
+- Docker + Docker Compose (for the local Postgres / Qdrant / Langfuse stack).
+- ~10 GB free disk (bilara-data clone + future vector index).
+- Optional: NVIDIA GPU with ≥12 GB VRAM for the reranker (arrives on day 13).
+
+### Install
 
 ```bash
-# Клонировать
 git clone https://github.com/toneruseman/Dharma-RAG.git
 cd Dharma-RAG
 
-# Установить зависимости (Python 3.12+)
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
-# Скопировать конфиг
-cp .env.example .env
-# Отредактировать .env, добавить ANTHROPIC_API_KEY (опционально на дне 6)
+cp .env.example .env                # fill in ANTHROPIC_API_KEY when needed
 
-# Поднять локальный стек: Postgres 16 + Qdrant + Langfuse
-docker compose up -d
-
-# Применить миграции БД
+docker compose up -d                # Postgres + Qdrant + Langfuse
 alembic upgrade head
 
-# Проверить health check (единственный работающий endpoint на дне 6)
+# Smoke test — /health is the only endpoint live today.
 python -m uvicorn src.api.app:app --reload &
 curl http://localhost:8000/health
 ```
 
-### Опционально: загрузить корпус SuttaCentral
+### Optional: load the SuttaCentral corpus
 
 ```bash
-# Клонировать bilara-data (~500 MB)
 git clone --depth 1 --branch published \
   https://github.com/suttacentral/bilara-data.git data/raw/suttacentral
 
-# Ingest в Postgres (~90 секунд, 3 413 сутт, 124 532 чанка)
 python scripts/ingest_sc.py --nikayas mn,dn,sn,an
+# → 3,413 suttas / 10,227 chunks ingested in ~90 s
 ```
 
-`POST /api/query` endpoint появится на дне 19.
+`POST /api/query` lands on day 19.
 
 ---
 
-## Документация
+## Documentation
 
-**Активные планы и решения:**
-- [docs/STATUS.md](docs/STATUS.md) — единый трекер прогресса (RAG + APP), обновляется на каждом merge
-- [docs/decisions/0001-phase1-architecture.md](docs/decisions/0001-phase1-architecture.md) — **ADR-0001**, авторитетный источник архитектурных решений Phase 1
-- [docs/RAG_DEVELOPMENT_PLAN.md](docs/RAG_DEVELOPMENT_PLAN.md) — 120-дневный план RAG-ядра
-- [docs/APP_DEVELOPMENT_PLAN.md](docs/APP_DEVELOPMENT_PLAN.md) — 60-дневный план приложения (backend + frontend + mobile)
-- [CHANGELOG.md](CHANGELOG.md) — по-дневный список изменений
-- [ROADMAP.md](ROADMAP.md) — долгосрочное видение фаз
+**Active plans & decisions**
 
-**Research и справочные материалы:**
-- [docs/Dharma-RAG-Research-EN.md](docs/Dharma-RAG-Research-EN.md) — полное описание проекта на английском (3432 строки)
-- [docs/Dharma-RAG.md](docs/Dharma-RAG.md) — рабочий документ с описанием архитектуры и источников
+- [docs/STATUS.md](docs/STATUS.md) — unified day-by-day progress tracker (RAG + app), updated on every merge.
+- [docs/decisions/0001-phase1-architecture.md](docs/decisions/0001-phase1-architecture.md) — **ADR-0001**, the authoritative record of Phase 1 architecture choices.
+- [docs/RAG_DEVELOPMENT_PLAN.md](docs/RAG_DEVELOPMENT_PLAN.md) — 120-day RAG-core plan.
+- [docs/APP_DEVELOPMENT_PLAN.md](docs/APP_DEVELOPMENT_PLAN.md) — 60-day application plan (backend + frontend + mobile).
+- [CHANGELOG.md](CHANGELOG.md) — day-by-day changelog.
+- [ROADMAP.md](ROADMAP.md) — long-horizon phase outline.
 
-## Структура репозитория
+**Research & reference**
+
+- [docs/Dharma-RAG-Research-EN.md](docs/Dharma-RAG-Research-EN.md) — full English project study (3,432 lines).
+- [docs/Dharma-RAG.md](docs/Dharma-RAG.md) — working architecture & sources document.
+
+---
+
+## Repository layout
 
 ```
 Dharma-RAG/
-├── README.md                   ← вы здесь
-├── LICENSE                     ← MIT
-├── CHANGELOG.md
-├── ROADMAP.md
-├── docker-compose.yml          ← Postgres + Qdrant + Langfuse
-├── pyproject.toml              ← Python 3.12+, зависимости
-├── alembic.ini + alembic/      ← DB миграции (asyncpg + psycopg)
-├── docs/                       ← см. секцию "Документация" выше
-├── consent-ledger/             ← YAML-реестр лицензий по источникам
-│   ├── public-domain/          ← CC0, public domain
-│   ├── open-license/           ← CC-BY, CC-BY-NC и т.п.
-│   └── explicit-permission/    ← контент с личного разрешения автора
+├── README.md / README.ru.md        ← you are here (EN / RU)
+├── LICENSE                         ← MIT
+├── CHANGELOG.md / ROADMAP.md
+├── docker-compose.yml              ← Postgres + Qdrant + Langfuse
+├── pyproject.toml                  ← Python 3.12+, dependencies
+├── alembic.ini + alembic/          ← DB migrations (asyncpg + psycopg)
+├── .claude/agents/                 ← project-shared Claude Code subagents
+├── docs/                           ← see "Documentation" above
+├── consent-ledger/                 ← YAML license records per source
+│   ├── public-domain/              ← CC0, public domain
+│   ├── open-license/               ← CC-BY, CC-BY-NC, etc.
+│   └── explicit-permission/        ← content used with explicit author permission
 ├── src/
-│   ├── api/                    ← FastAPI app (/health сейчас)
-│   ├── config.py               ← Pydantic Settings
-│   ├── db/                     ← SQLAlchemy 2.x FRBR models + сессии
-│   ├── ingest/suttacentral/    ← парсер bilara + loader в Postgres
-│   ├── processing/             ← cleaner (NFC, IAST, ASCII fold)
-│   ├── logging_config.py       ← structlog
-│   └── cli.py                  ← command-line утилиты
+│   ├── api/                        ← FastAPI app (`/health` so far)
+│   ├── config.py                   ← Pydantic Settings
+│   ├── db/                         ← SQLAlchemy 2.x FRBR models + async sessions
+│   ├── ingest/suttacentral/        ← bilara parser + Postgres loader
+│   ├── processing/                 ← cleaner (NFC, IAST, ASCII fold), chunker
+│   ├── logging_config.py           ← structlog
+│   └── cli.py                      ← command-line utilities
 ├── scripts/
-│   ├── ingest_sc.py            ← CLI для ingest SuttaCentral
-│   ├── sc_dryrun.py            ← проверка парсера (10 записей)
-│   └── reclean_chunks.py       ← backfill cleaner на существующие строки
+│   ├── ingest_sc.py                ← CLI for SuttaCentral ingest
+│   ├── sc_dryrun.py                ← parser smoke test (10 records)
+│   ├── reclean_chunks.py           ← backfill cleaner on existing rows
+│   └── rechunk.py                  ← backfill parent/child chunker
 ├── tests/
-│   ├── unit/                   ← быстрые тесты без DB (47 шт)
-│   ├── integration/            ← тесты с реальным Postgres (13 шт)
-│   └── eval/                   ← golden set (добавляется с буддологом)
-└── data/                       ← gitignored: raw/, processed/, qdrant_storage/
+│   ├── unit/                       ← fast tests, no DB (65 total)
+│   ├── integration/                ← Postgres-backed tests (14 total)
+│   └── eval/                       ← golden set (adds with buddhologist — blocker #8)
+└── data/                           ← gitignored: raw/, processed/, qdrant_storage/
 ```
 
 ---
 
-## Лицензия
+## License
 
-**Код:** MIT (см. [LICENSE](LICENSE))
-**Документация:** CC-BY-SA 4.0
-**Данные:** см. [consent-ledger/](consent-ledger/) — каждый источник имеет свою лицензию
+- **Code:** MIT (see [LICENSE](LICENSE)).
+- **Documentation:** CC-BY-SA 4.0.
+- **Data:** see [consent-ledger/](consent-ledger/) — each source carries its own license record.
 
 ---
 
-## Контакты
+## Contact
 
 - GitHub: [@toneruseman](https://github.com/toneruseman)
 - Issues: [github.com/toneruseman/Dharma-RAG/issues](https://github.com/toneruseman/Dharma-RAG/issues)
 
-> "Sabbe sattā sukhitā hontu" — Пусть все существа будут счастливы.
+---
 
-## Статус разработки
+🚀 Development started **14 April 2026**.
+📍 Current phase: **Phase 1 Foundation** — week 1 (day **7** of 21).
+🎯 Next milestone: **v0.1.0 — Foundation** (day 21, roughly end of May 2026).
 
-🚀 **Начало разработки:** 14 апреля 2026
-📍 **Текущая фаза:** Phase 1 Foundation — неделя 1 (день **6** из 21)
-🎯 **Следующий milestone:** `v0.1.0` — Foundation (день 21, ~конец мая 2026)
+Day-by-day tracker: [docs/STATUS.md](docs/STATUS.md).
 
-Подробный трекер по дням — в [docs/STATUS.md](docs/STATUS.md).
+> *"Sabbe sattā sukhitā hontu"* — May all beings be happy.
