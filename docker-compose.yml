@@ -79,6 +79,33 @@ services:
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "true"
 
   # ========================================================================
+  # Phoenix — OpenTelemetry + OpenInference observability (ADR-0001)
+  #
+  # Lighter than Langfuse: single container, SQLite persistence, OTel-native.
+  # The FastAPI app exports traces to :4317 (gRPC); operators view them in
+  # the web UI at http://localhost:6006. Langfuse stays running alongside
+  # during the v0.0.x migration window and will be removed in v0.1.0.
+  # ========================================================================
+  phoenix:
+    image: arizephoenix/phoenix:version-14.10
+    container_name: dharma-phoenix
+    restart: unless-stopped
+    ports:
+      - "6006:6006"  # Web UI (dashboard)
+      - "4317:4317"  # OTLP/gRPC ingest (app sends spans here)
+    environment:
+      # Persist traces to /mnt/data so they survive container restarts.
+      # Using the built-in SQLite backend — no extra DB service needed.
+      PHOENIX_WORKING_DIR: /mnt/data
+    volumes:
+      - phoenix_data:/mnt/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6006/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ========================================================================
   # FastAPI app (uncomment when ready)
   # ========================================================================
   # app:
@@ -103,3 +130,4 @@ volumes:
   qdrant_storage:
   langfuse_db_data:
   dharma_db_data:
+  phoenix_data:

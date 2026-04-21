@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     langfuse_secret_key: str = Field(default="")
     langfuse_host: str = Field(default="http://localhost:3000")
 
+    # Phoenix replaces Langfuse per ADR-0001. OTLP/gRPC endpoint — set to
+    # "" to disable tracing entirely (useful for unit tests / CLIs).
+    phoenix_otlp_endpoint: str = Field(default="http://localhost:4317")
+    phoenix_ui_url: str = Field(default="http://localhost:6006")
+
     # --- App configuration ---
     app_env: AppEnv = Field(default=AppEnv.DEVELOPMENT)
     app_host: str = Field(default="0.0.0.0")  # noqa: S104
