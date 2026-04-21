@@ -9,7 +9,8 @@
 
 ## [Unreleased]
 
-_Nothing yet. Work begins on rag-day-07 (parent/child structural chunker)._
+### Added
+- **rag-day-07:** Parent/child structural chunker in `src/processing/chunker.py`. Pure, dependency-free: produces parents (target 1536 / max 2048 tokens, broken at paragraph boundaries) and children (target 384 / max 512, broken at segment boundaries). `TokenCounter` injected via DI for future BGE-M3 tokenizer swap. SuttaCentral loader rewired to emit parent+child instead of flat per-segment rows. `scripts/rechunk.py` rebuilds existing Instances in-place (ran on live DB: 124,532 flat → 10,227 structured chunks = 3,749 parents + 6,478 children, 48 s, 0 orphan children). 18 unit + 1 rechunk-idempotency integration test added (79 total passing).
 
 ---
 
