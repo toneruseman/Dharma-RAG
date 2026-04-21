@@ -31,7 +31,7 @@
 | Day | Задача | Статус | Коммит |
 |---|---|---|---|
 | rag-day-01 | Docker Compose + FastAPI `/health` + config + logging | ✅ Done | `36f5846` |
-| rag-day-02 | Postgres schema FRBR + Alembic миграции | ✅ Done | (this branch) |
+| rag-day-02 | Postgres schema FRBR + Alembic миграции | ✅ Done | `d5eac80` |
 | rag-day-03 | Скачать SuttaCentral bilara-data + parser dry-run | 📋 Planned | — |
 | rag-day-04 | Full ingest SuttaCentral (Sujato EN для MN/DN/SN/AN) | 📋 Planned | — |
 | rag-day-05 | **Gate:** Golden v0.1 от буддолога (30 QA) | 🚧 Blocked | Нужен буддолог на связи |
