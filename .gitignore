@@ -104,3 +104,9 @@ secrets/
 docs/pdf/
 docs/old/pdf/
 *.pdf
+
+# Claude Code harness — project agents are SHARED (committed),
+# but user-local overrides and cache are personal.
+.claude/settings.local.json
+.claude/.cache/
+.claude/*.log
