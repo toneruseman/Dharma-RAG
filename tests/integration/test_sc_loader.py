@@ -87,7 +87,9 @@ async def test_load_file_creates_full_frbr_hierarchy(
     await db_session.commit()
 
     assert not result.skipped
-    assert result.chunks_inserted == 4
+    # 1 parent + 1 child for this tiny sutta (all 4 segments fit under
+    # a single parent and a single child by token count).
+    assert result.chunks_inserted == 2
 
     work = (
         await db_session.execute(sa.select(Work).where(Work.canonical_id == "mn1"))
@@ -132,17 +134,23 @@ async def test_load_file_creates_full_frbr_hierarchy(
         .scalars()
         .all()
     )
-    assert len(chunks) == 4
-    assert [c.segment_id for c in chunks] == [
-        "mn1:0.1",
-        "mn1:0.2",
-        "mn1:1.1",
-        "mn1:1.2",
-    ]
-    assert all(c.is_parent is False for c in chunks)
-    # Cleaner strips trailing whitespace and populates the fold column.
-    assert chunks[0].text == "Middle Discourses 1"
-    assert chunks[0].text_ascii_fold == "Middle Discourses 1"
+    assert len(chunks) == 2
+    parent, child = chunks
+    assert parent.is_parent is True
+    assert parent.parent_chunk_id is None
+    assert parent.metadata_json["segment_ids"] == ["mn1:0.1", "mn1:0.2", "mn1:1.1", "mn1:1.2"]
+    # Parent text is the joined canonical text of all four segments.
+    assert parent.text.startswith("Middle Discourses 1")
+    assert "At one time the Buddha" in parent.text
+
+    assert child.is_parent is False
+    assert child.parent_chunk_id == parent.id
+    assert child.metadata_json["position_in_parent"] == 0
+    # Child covers the same segments when the parent is short enough.
+    assert child.metadata_json["segment_ids"] == parent.metadata_json["segment_ids"]
+    # ASCII fold column is populated on both kinds of chunk.
+    assert parent.text_ascii_fold is not None and parent.text_ascii_fold.isascii()
+    assert child.text_ascii_fold is not None
 
 
 async def test_load_file_is_idempotent_via_content_hash(
@@ -175,7 +183,8 @@ async def test_load_file_is_idempotent_via_content_hash(
         await db_session.execute(sa.select(sa.func.count()).select_from(Chunk))
     ).scalar_one()
     assert total_instances == 1
-    assert total_chunks == 4
+    # 1 parent + 1 child after structural chunking of a 4-segment sutta.
+    assert total_chunks == 2
 
 
 async def test_load_file_rejects_unknown_author(
@@ -212,10 +221,19 @@ async def test_load_directory_handles_multiple_works(
     assert counters["files_seen"] == 2
     assert counters["files_loaded"] == 2
     assert counters["files_skipped"] == 0
-    assert counters["chunks_inserted"] == 4 + 3  # mn1 has 4, mn2 has 3
+    # Each short sutta collapses to 1 parent + 1 child under default
+    # token targets, so 2 files × 2 chunks = 4.
+    assert counters["chunks_inserted"] == 4
 
     works = (await db_session.execute(sa.select(Work))).scalars().all()
     assert {w.canonical_id for w in works} == {"mn1", "mn2"}
+
+    # Every child must point at a real parent.
+    all_chunks = (await db_session.execute(sa.select(Chunk))).scalars().all()
+    parents_by_id = {c.id: c for c in all_chunks if c.is_parent}
+    for chunk in all_chunks:
+        if not chunk.is_parent:
+            assert chunk.parent_chunk_id in parents_by_id
 
 
 async def test_cleaner_produces_ascii_fold_for_pali_segments(
@@ -246,15 +264,69 @@ async def test_cleaner_produces_ascii_fold_for_pali_segments(
     await db_session.commit()
 
     chunks = (await db_session.execute(sa.select(Chunk).order_by(Chunk.sequence))).scalars().all()
-    assert len(chunks) == 3
-    # Canonical: whitespace stripped, diacritics preserved.
-    assert chunks[1].text == "Satipaṭṭhānasutta"
-    assert chunks[2].text == "Evaṃ me sutaṃ—saṅghe nibbānañca."
-    # ASCII fold column must be ASCII-only and diacritic-free.
-    assert chunks[1].text_ascii_fold == "Satipatthanasutta"
-    assert chunks[2].text_ascii_fold == "Evam me sutam—sanghe nibbananca."
-    assert chunks[2].text_ascii_fold is not None
-    assert chunks[2].text_ascii_fold.isascii() is False  # em-dash is not ASCII
-    # But every non-em-dash character must be ASCII — the diacritics are gone.
-    fold_without_dash = chunks[2].text_ascii_fold.replace("—", " ")
+    # Three short segments collapse into one parent + one child.
+    assert len(chunks) == 2
+    parent, child = chunks
+    assert parent.is_parent is True
+    assert child.is_parent is False and child.parent_chunk_id == parent.id
+
+    # Canonical text preserves diacritics; both kinds of chunk carry it.
+    assert "Satipaṭṭhānasutta" in parent.text
+    assert "nibbānañca" in parent.text
+    assert "Satipaṭṭhānasutta" in child.text
+
+    # ASCII fold exists on both rows, diacritics stripped, em-dash kept.
+    assert parent.text_ascii_fold is not None
+    assert child.text_ascii_fold is not None
+    assert "Satipatthanasutta" in parent.text_ascii_fold
+    assert "nibbananca" in parent.text_ascii_fold
+    fold_without_dash = parent.text_ascii_fold.replace("—", " ")
     assert fold_without_dash.isascii()
+
+
+# ---------------------------------------------------------------------------
+# scripts/rechunk.py — idempotency
+# ---------------------------------------------------------------------------
+
+
+async def test_rechunk_on_fresh_ingest_is_noop(
+    db_session: AsyncSession,
+    sc_tree: Path,
+) -> None:
+    """Running rechunk over an Instance already in parent/child form skips it.
+
+    Day-4 ingest produced flat chunks that had to be migrated on day 7.
+    From day 7 onwards the loader emits parent/child directly, so a
+    later rechunk has nothing to do. This test guards that invariant
+    so the script stays safe to re-run as a cron.
+    """
+    from scripts.rechunk import _rechunk_one_instance
+
+    path = (
+        sc_tree
+        / "translation"
+        / "en"
+        / "sujato"
+        / "sutta"
+        / "mn"
+        / "mn1_translation-en-sujato.json"
+    )
+    bf = parse_bilara_file(path, sc_tree)
+    await load_file(db_session, bf)
+    await db_session.commit()
+
+    instance_id = (await db_session.execute(sa.select(Instance.id).limit(1))).scalar_one()
+
+    deleted, inserted, skipped = await _rechunk_one_instance(db_session, instance_id)
+    assert (deleted, inserted, skipped) == (0, 0, 1)
+
+    # Running again must also skip and never touch data.
+    chunks_before = (
+        await db_session.execute(sa.select(sa.func.count()).select_from(Chunk))
+    ).scalar_one()
+    deleted2, inserted2, skipped2 = await _rechunk_one_instance(db_session, instance_id)
+    assert (deleted2, inserted2, skipped2) == (0, 0, 1)
+    chunks_after = (
+        await db_session.execute(sa.select(sa.func.count()).select_from(Chunk))
+    ).scalar_one()
+    assert chunks_after == chunks_before
