@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from src import __version__
 from src.config import get_settings
 from src.logging_config import get_logger, setup_logging
+from src.observability import setup_tracing, shutdown_tracing
 
 
 class HealthResponse(BaseModel):
@@ -50,8 +51,11 @@ def create_app() -> FastAPI:
             host=settings.app_host,
             port=settings.app_port,
         )
-        yield
-        log.info("api.shutdown")
+        try:
+            yield
+        finally:
+            shutdown_tracing()
+            log.info("api.shutdown")
 
     app = FastAPI(
         title="Dharma RAG",
@@ -64,6 +68,13 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         lifespan=lifespan,
     )
+
+    # Tracing wiring must happen BEFORE the ASGI server starts accepting
+    # requests — FastAPIInstrumentor adds middleware to the app, and
+    # FastAPI/Starlette lock the middleware stack once the first request
+    # is processed. Attaching from inside ``lifespan`` is too late: the
+    # middleware never runs and every request is invisible to Phoenix.
+    setup_tracing(fastapi_app=app)
 
     @app.get(
         "/health",
