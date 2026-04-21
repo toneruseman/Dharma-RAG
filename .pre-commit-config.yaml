@@ -36,6 +36,7 @@ repos:
           - types-PyYAML
           - fastapi
           - structlog
+          - sqlalchemy>=2.0.35
         files: ^src/
 
   # Блокировать секреты (API keys)
