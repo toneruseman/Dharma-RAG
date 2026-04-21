@@ -94,3 +94,8 @@ desktop.ini
 secrets/
 *.pem
 *.key
+
+# Generated PDF exports (from scripts/md_to_pdf.py)
+docs/pdf/
+docs/old/pdf/
+*.pdf
