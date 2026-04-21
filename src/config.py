@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     qdrant_url: str = Field(default="http://localhost:6333")
     qdrant_api_key: str = Field(default="")
 
+    # --- Application Database (Postgres: FRBR corpus + app tables) ---
+    # Default is the local dev compose password; prod overrides via env.
+    database_url: str = Field(
+        default="postgresql+asyncpg://dharma:dharma_dev@localhost:5432/dharma"  # pragma: allowlist secret
+    )
+
     # --- Observability ---
     langfuse_public_key: str = Field(default="")
     langfuse_secret_key: str = Field(default="")
@@ -97,6 +103,16 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.app_env == AppEnv.DEVELOPMENT
+
+    @property
+    def database_url_sync(self) -> str:
+        """Sync-driver URL derived from ``database_url`` for Alembic DDL ops.
+
+        SQLAlchemy Alembic migrations run synchronously; we swap the
+        asyncpg driver for psycopg 3 so the same connection string works
+        in both contexts without maintaining two env vars.
+        """
+        return self.database_url.replace("+asyncpg", "+psycopg")
 
 
 def get_settings() -> Settings:
