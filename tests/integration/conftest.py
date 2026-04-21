@@ -43,14 +43,15 @@ TEST_DB_URL_ASYNC = f"postgresql+asyncpg://dharma:dharma_dev@localhost:5432/{TES
 TEST_DB_URL_SYNC = f"postgresql+psycopg://dharma:dharma_dev@localhost:5432/{TEST_DB_NAME}"  # pragma: allowlist secret
 
 # Non-seed tables that every test is allowed to mutate. Lookup tables
-# (``tradition_t``, ``language_t``) are seeded by migration 001 and
-# must survive across tests so that FK references keep working.
+# (``tradition_t``, ``language_t``, ``author_t``) carry seed data from
+# migrations 001/002 and must survive across tests so that FK references
+# keep working. Tests that need a throwaway author should insert and
+# delete it explicitly.
 MUTABLE_TABLES: tuple[str, ...] = (
     "chunk",
     "instance",
     "expression",
     "work",
-    "author_t",
 )
 
 

@@ -64,6 +64,10 @@ class Author(Base):
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     author_type: Mapped[str] = mapped_column(String(32), nullable=False)
     # One of: translator, teacher, commentator, compiler, editor.
+    # Short identifier used by upstream sources (``sujato``, ``ms``,
+    # ``brahmali``). UNIQUE when present — see migration 002. The index
+    # is a partial index so existing rows without a slug stay valid.
+    slug: Mapped[str | None] = mapped_column(String(64))
     tradition_code: Mapped[str | None] = mapped_column(
         ForeignKey("tradition_t.code", ondelete="SET NULL")
     )

@@ -33,7 +33,7 @@
 | rag-day-01 | Docker Compose + FastAPI `/health` + config + logging | ✅ Done | `36f5846` |
 | rag-day-02 | Postgres schema FRBR + Alembic миграции | ✅ Done | `d5eac80` |
 | rag-day-03 | Скачать SuttaCentral bilara-data + parser dry-run | ✅ Done | `4618a5d` |
-| rag-day-04 | Full ingest SuttaCentral (Sujato EN для MN/DN/SN/AN) | 📋 Planned | — |
+| rag-day-04 | Full ingest SuttaCentral (Sujato EN для MN/DN/SN/AN) | ✅ Done | `8ef9519` |
 | rag-day-05 | **Gate:** Golden v0.1 от буддолога (30 QA) | 🚧 Blocked | Нужен буддолог на связи |
 | rag-day-06 | Cleaner: Unicode NFC, Pali диакритика (IAST + ASCII-fold) | 📋 Planned | — |
 | rag-day-07 | Структурный chunker (384 child / 1024-2048 parent) | 📋 Planned | — |
