@@ -140,7 +140,9 @@ async def test_load_file_creates_full_frbr_hierarchy(
         "mn1:1.2",
     ]
     assert all(c.is_parent is False for c in chunks)
-    assert chunks[0].text == "Middle Discourses 1 "
+    # Cleaner strips trailing whitespace and populates the fold column.
+    assert chunks[0].text == "Middle Discourses 1"
+    assert chunks[0].text_ascii_fold == "Middle Discourses 1"
 
 
 async def test_load_file_is_idempotent_via_content_hash(
@@ -214,3 +216,45 @@ async def test_load_directory_handles_multiple_works(
 
     works = (await db_session.execute(sa.select(Work))).scalars().all()
     assert {w.canonical_id for w in works} == {"mn1", "mn2"}
+
+
+async def test_cleaner_produces_ascii_fold_for_pali_segments(
+    db_session: AsyncSession,
+    tmp_path: Path,
+) -> None:
+    """End-to-end check that the cleaner is wired into ingest.
+
+    We use a translation segment full of Pali diacritics — the resulting
+    chunk must carry the canonical text unchanged and an ASCII-only
+    fold next to it, so BM25 can match ``satipatthana`` queries against
+    ``satipaṭṭhāna`` indexed text.
+    """
+    root = tmp_path / "bilara-data"
+    translation = (
+        root / "translation" / "en" / "sujato" / "sutta" / "mn" / "mn10_translation-en-sujato.json"
+    )
+    _write(
+        translation,
+        {
+            "mn10:0.1": "Middle Discourses 10 ",
+            "mn10:0.2": "Satipaṭṭhānasutta ",
+            "mn10:1.1": "Evaṃ me sutaṃ—saṅghe nibbānañca. ",
+        },
+    )
+    bf = parse_bilara_file(translation, root)
+    await load_file(db_session, bf)
+    await db_session.commit()
+
+    chunks = (await db_session.execute(sa.select(Chunk).order_by(Chunk.sequence))).scalars().all()
+    assert len(chunks) == 3
+    # Canonical: whitespace stripped, diacritics preserved.
+    assert chunks[1].text == "Satipaṭṭhānasutta"
+    assert chunks[2].text == "Evaṃ me sutaṃ—saṅghe nibbānañca."
+    # ASCII fold column must be ASCII-only and diacritic-free.
+    assert chunks[1].text_ascii_fold == "Satipatthanasutta"
+    assert chunks[2].text_ascii_fold == "Evam me sutam—sanghe nibbananca."
+    assert chunks[2].text_ascii_fold is not None
+    assert chunks[2].text_ascii_fold.isascii() is False  # em-dash is not ASCII
+    # But every non-em-dash character must be ASCII — the diacritics are gone.
+    fold_without_dash = chunks[2].text_ascii_fold.replace("—", " ")
+    assert fold_without_dash.isascii()

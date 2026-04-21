@@ -35,6 +35,7 @@ from src.db.models.frbr import Chunk, Expression, Instance, Work
 from src.db.models.lookups import Author, Language
 from src.ingest.suttacentral.models import BilaraFile, FileKind, Segment
 from src.ingest.suttacentral.parser import iter_bilara_files, iter_segments
+from src.processing.cleaner import to_ascii_fold, to_canonical
 
 # SuttaCentral's bilara-data is released under CC0-1.0. The license is
 # stamped onto every Expression we create so the corpus is auditable
@@ -204,30 +205,34 @@ async def load_file(
     session.add(instance)
     await session.flush()  # populate instance.id for FK on chunks
 
+    chunks_inserted = 0
     for seq, seg in enumerate(segments):
-        text = seg.text
+        canonical = to_canonical(seg.text)
+        if not canonical:
+            # A segment that reduces to empty after cleaning (rare, but
+            # bilara occasionally ships whitespace-only keys) is not
+            # worth an index row.
+            continue
         session.add(
             Chunk(
                 instance_id=instance.id,
                 sequence=seq,
-                text=text,
-                # Normalisation / ASCII fold arrives in the cleaner
-                # (rag-day-06); leave NULL for now so downstream knows
-                # this chunk has not been processed yet.
-                text_ascii_fold=None,
-                token_count=max(1, len(text.split())),
+                text=canonical,
+                text_ascii_fold=to_ascii_fold(canonical),
+                token_count=max(1, len(canonical.split())),
                 is_parent=False,
                 segment_id=seg.segment_id,
-                metadata_json={"stage": "bilara-raw"},
+                metadata_json={"stage": "bilara-clean"},
             )
         )
+        chunks_inserted += 1
     await session.flush()
 
     return LoadResult(
         work_id=work.id,
         expression_id=expression.id,
         instance_id=instance.id,
-        chunks_inserted=len(segments),
+        chunks_inserted=chunks_inserted,
         skipped=False,
     )
 
@@ -343,12 +348,15 @@ def _pick_title(segments: list[Segment], *, uid: str) -> str:
     """
     for preferred in (f"{uid}:0.2", f"{uid}:0.1"):
         for seg in segments:
-            if seg.segment_id == preferred and seg.text.strip():
-                return seg.text.strip()[:512]
+            if seg.segment_id == preferred:
+                canonical = to_canonical(seg.text)
+                if canonical:
+                    return canonical[:512]
     # Fallback: the first non-empty segment, or the uid itself.
     for seg in segments:
-        if seg.text.strip():
-            return seg.text.strip()[:512]
+        canonical = to_canonical(seg.text)
+        if canonical:
+            return canonical[:512]
     return uid
 
 
@@ -387,8 +395,10 @@ def _pick_root_title(bf: BilaraFile) -> str | None:
         return None
     for key in (f"{bf.uid}:0.2", f"{bf.uid}:0.1"):
         text = data.get(key)
-        if isinstance(text, str) and text.strip():
-            return text.strip()[:512]
+        if isinstance(text, str):
+            canonical = to_canonical(text)
+            if canonical:
+                return canonical[:512]
     return None
 
 
