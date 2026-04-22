@@ -35,6 +35,7 @@ from src.db.models.frbr import Chunk, Expression, Instance, Work
 from src.db.models.lookups import Author, Language
 from src.ingest.suttacentral.models import BilaraFile, FileKind, Segment
 from src.ingest.suttacentral.parser import iter_bilara_files, iter_segments
+from src.processing.chunker import SegmentInput, chunk_segments
 from src.processing.cleaner import to_ascii_fold, to_canonical
 
 # SuttaCentral's bilara-data is released under CC0-1.0. The license is
@@ -205,27 +206,72 @@ async def load_file(
     session.add(instance)
     await session.flush()  # populate instance.id for FK on chunks
 
-    chunks_inserted = 0
-    for seq, seg in enumerate(segments):
+    # Step 1: clean every segment to its canonical form. Drop segments
+    # that collapse to empty after cleaning — they add no retrieval
+    # signal and would confuse the chunker's token budget.
+    cleaned_segments: list[SegmentInput] = []
+    for seg in segments:
         canonical = to_canonical(seg.text)
         if not canonical:
-            # A segment that reduces to empty after cleaning (rare, but
-            # bilara occasionally ships whitespace-only keys) is not
-            # worth an index row.
             continue
-        session.add(
-            Chunk(
-                instance_id=instance.id,
-                sequence=seq,
-                text=canonical,
-                text_ascii_fold=to_ascii_fold(canonical),
-                token_count=max(1, len(canonical.split())),
-                is_parent=False,
-                segment_id=seg.segment_id,
-                metadata_json={"stage": "bilara-clean"},
-            )
+        cleaned_segments.append(SegmentInput(segment_id=seg.segment_id, text=canonical))
+
+    # Step 2: run the structural chunker. The chunker is pure — its
+    # output is the source-of-truth for how this sutta should look in
+    # the index, regardless of historical ingest state.
+    parents = chunk_segments(cleaned_segments)
+
+    # Step 3: persist parents first (so children have a PK to FK to),
+    # then children. Sequence numbers are contiguous across the full
+    # Instance: parent_0, its children, parent_1, its children, ...
+    # This keeps ``(instance_id, sequence)`` a meaningful ordering for
+    # both kinds of chunk without needing a separate numeric space.
+    chunks_inserted = 0
+    next_sequence = 0
+    for parent in parents:
+        parent_row = Chunk(
+            instance_id=instance.id,
+            sequence=next_sequence,
+            text=parent.text,
+            text_ascii_fold=to_ascii_fold(parent.text),
+            token_count=parent.token_count,
+            is_parent=True,
+            # Parents aggregate many bilara segments — record the first
+            # one as ``segment_id`` for quick citation, and the full list
+            # lives in ``metadata_json`` for precise provenance.
+            segment_id=parent.segment_ids[0] if parent.segment_ids else None,
+            metadata_json={
+                "stage": "parent",
+                "segment_ids": parent.segment_ids,
+                "position": parent.position,
+                "child_count": len(parent.children),
+            },
         )
+        session.add(parent_row)
+        await session.flush()  # populate parent_row.id for the children FK
         chunks_inserted += 1
+        next_sequence += 1
+
+        for child in parent.children:
+            session.add(
+                Chunk(
+                    instance_id=instance.id,
+                    parent_chunk_id=parent_row.id,
+                    sequence=next_sequence,
+                    text=child.text,
+                    text_ascii_fold=to_ascii_fold(child.text),
+                    token_count=child.token_count,
+                    is_parent=False,
+                    segment_id=child.segment_ids[0] if child.segment_ids else None,
+                    metadata_json={
+                        "stage": "child",
+                        "segment_ids": child.segment_ids,
+                        "position_in_parent": child.position_in_parent,
+                    },
+                )
+            )
+            chunks_inserted += 1
+            next_sequence += 1
     await session.flush()
 
     return LoadResult(

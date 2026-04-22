@@ -36,7 +36,9 @@
 | rag-day-04 | Full ingest SuttaCentral (Sujato EN для MN/DN/SN/AN) | ✅ Done | `8ef9519` |
 | rag-day-05 | **Gate:** Golden v0.1 от буддолога (30 QA) | 🚧 Blocked | Нужен буддолог на связи |
 | rag-day-06 | Cleaner: Unicode NFC, Pali диакритика (IAST + ASCII-fold) | ✅ Done | `ce186c5` |
-| rag-day-07 | Структурный chunker (384 child / 1024-2048 parent) | 📋 Planned | — |
+| rag-day-07 | Структурный chunker (384 child / 1024-2048 parent) | ✅ Done | `6c8ff98` |
+| rag-day-08 | FlagEmbedding + BGE-M3 (dense + sparse на 100 чанках) | ✅ Done | `9f7e092` |
+| rag-day-09 | Phoenix observability + OpenInference | ✅ Done | (this branch) |
 | … | (всего 120 дней в плане) | | |
 
 ### App-трек
