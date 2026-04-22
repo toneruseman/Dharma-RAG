@@ -185,12 +185,11 @@ async def _run(args: argparse.Namespace) -> int:
             encoder_batch_size=args.encoder_batch_size,
             encoder_max_length=args.encoder_max_length,
         )
+        elapsed = time.monotonic() - start
+        count = client.count(COLLECTION_NAME, exact=True)
     finally:
         await engine.dispose()
         client.close()
-    elapsed = time.monotonic() - start
-
-    count = client.count(COLLECTION_NAME, exact=True)
 
     print(
         "\n=== Indexing summary ===\n"

@@ -10,7 +10,14 @@
 ## [Unreleased]
 
 ### Added
-- **rag-day-10 (partial — code ready, GPU ingest pending):** Qdrant indexer in `src/embeddings/indexer.py`. Named-vector collection `dharma_v1` (1024-d dense BGE-M3 cosine + learned sparse). Pure DI via `QdrantClientProtocol` + `EncoderProtocol` so unit tests run without Qdrant or CUDA (19 unit tests, 98% coverage). Integration tests verify real qdrant-client 1.17 accepts the `PointStruct` shape, `query_points` round-trips dense/sparse, identity-vector query returns cosine 1.0, and re-upsert on the same chunk UUID is idempotent (5 integration tests). CLI `scripts/index_qdrant.py` streams from Postgres with keyset pagination on `chunk.id`, filters to child chunks by default (`--include-parents` to override), supports `--limit N` for smoke runs and `--recreate` to drop the collection. Continue-on-error orchestration: a failed batch is logged, captured in `IndexerStats.failed_batches`, and the run proceeds past it.
+- **rag-day-10:** Qdrant indexer in `src/embeddings/indexer.py`. Named-vector collection `dharma_v1` (1024-d dense BGE-M3 cosine + learned sparse). Pure DI via `QdrantClientProtocol` + `EncoderProtocol` so unit tests run without Qdrant or CUDA (19 unit tests, 98% coverage). Integration tests verify real qdrant-client 1.17 accepts the `PointStruct` shape, `query_points` round-trips dense/sparse, identity-vector query returns cosine 1.0, and re-upsert on the same chunk UUID is idempotent (5 integration tests). CLI `scripts/index_qdrant.py` streams from Postgres with keyset pagination on `chunk.id`, filters to child chunks by default (`--include-parents` to override), supports `--limit N` for smoke runs and `--recreate` to drop the collection. **Full corpus indexed on GPU: 6,478 child chunks in 4:40 min on the 1080 Ti with fp16 (~23 chunks/sec), 0 failed batches.** `scripts/smoke_retrieval.py` runs a curated set of canonical queries (English paraphrase, Pali with/without diacritics, Russian cross-lingual) and prints dense + sparse top-3 with scores and text — qualitative sanity gate before the numeric eval on day 14.
+- **Toolchain:** torch upgraded 2.5.1+cu121 → 2.6.0+cu124 (CVE-2025-32434 + transformers 4.57 pickle-loader gate). huggingface-hub pinned back to `<1.0` to match transformers 4.x. Both were latent conflicts from day-8; day-10 forced the resolution.
+
+### Qualitative retrieval results (day-10 baseline, pre-reranker)
+- 🟢 English paraphrase → canonical sutta: `mindfulness of breathing` → **MN 118 Anāpānassati** (0.700)
+- 🟢 English doctrinal term → right collection: `four noble truths` → **SN 56.27** (0.714)
+- 🟢 Cross-lingual: `страдание` (Russian) → **DN 22 Mahāsatipaṭṭhāna** (0.624)
+- 🔴 Bare Pali term weak without reranker: `satipaṭṭhāna` does not retrieve MN 10 (top score 0.49); motivates day-11 hybrid + day-13 reranker.
 
 ---
 
