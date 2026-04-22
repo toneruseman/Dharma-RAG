@@ -5,10 +5,10 @@
 >
 > **Source of truth:** git log + этот файл. Чаты не являются source of truth.
 
-- **Версия:** 2026-04-21
-- **Ветка:** `dev`
-- **Последний релиз:** нет (pre-alpha)
-- **Следующий milestone:** v0.1.0 Foundation
+- **Версия:** 2026-04-22
+- **Ветка:** `dev` (активная: `feat/rag-day-10-qdrant-indexing`)
+- **Последний релиз:** `v0.0.3` — Retrieval Foundation (2026-04-22)
+- **Следующий milestone:** v0.1.0 Foundation (rag-day-21)
 - **Стратегия:** **B** — RAG-first до `v0.1.0` (`rag-day-21`), затем интерливинг RAG+APP
 
 ---
@@ -38,7 +38,8 @@
 | rag-day-06 | Cleaner: Unicode NFC, Pali диакритика (IAST + ASCII-fold) | ✅ Done | `ce186c5` |
 | rag-day-07 | Структурный chunker (384 child / 1024-2048 parent) | ✅ Done | `6c8ff98` |
 | rag-day-08 | FlagEmbedding + BGE-M3 (dense + sparse на 100 чанках) | ✅ Done | `9f7e092` |
-| rag-day-09 | Phoenix observability + OpenInference | ✅ Done | (this branch) |
+| rag-day-09 | Phoenix observability + OpenInference | ✅ Done | `c2defe2` |
+| rag-day-10 | Qdrant collection `dharma_v1` + named vectors + full ingest | 🚧 In progress | (this branch) |
 | … | (всего 120 дней в плане) | | |
 
 ### App-трек

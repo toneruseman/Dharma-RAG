@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Added
+- **rag-day-10 (partial — code ready, GPU ingest pending):** Qdrant indexer in `src/embeddings/indexer.py`. Named-vector collection `dharma_v1` (1024-d dense BGE-M3 cosine + learned sparse). Pure DI via `QdrantClientProtocol` + `EncoderProtocol` so unit tests run without Qdrant or CUDA (19 unit tests, 98% coverage). Integration tests verify real qdrant-client 1.17 accepts the `PointStruct` shape, `query_points` round-trips dense/sparse, identity-vector query returns cosine 1.0, and re-upsert on the same chunk UUID is idempotent (5 integration tests). CLI `scripts/index_qdrant.py` streams from Postgres with keyset pagination on `chunk.id`, filters to child chunks by default (`--include-parents` to override), supports `--limit N` for smoke runs and `--recreate` to drop the collection. Continue-on-error orchestration: a failed batch is logged, captured in `IndexerStats.failed_batches`, and the run proceeds past it.
+
 ---
 
 ## [0.0.3] — 2026-04-22
