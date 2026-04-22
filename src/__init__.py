@@ -1,3 +1,3 @@
 """Dharma RAG — Open-source multilingual RAG for Buddhist contemplative teachings."""
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"

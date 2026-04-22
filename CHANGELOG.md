@@ -9,11 +9,29 @@
 
 ## [Unreleased]
 
+---
+
+## [0.0.3] — 2026-04-22
+
+Retrieval foundation release. Adds the structural chunker, the BGE-M3
+encoder, and Phoenix-based tracing — the three building blocks needed for
+day-10 Qdrant indexing. No retrieval endpoint yet; that lands in `v0.1.0`.
+
 ### Added
 - **rag-day-07:** Parent/child structural chunker in `src/processing/chunker.py`. Pure, dependency-free: produces parents (target 1536 / max 2048 tokens, broken at paragraph boundaries) and children (target 384 / max 512, broken at segment boundaries). `TokenCounter` injected via DI for future BGE-M3 tokenizer swap. SuttaCentral loader rewired to emit parent+child instead of flat per-segment rows. `scripts/rechunk.py` rebuilds existing Instances in-place (ran on live DB: 124,532 flat → 10,227 structured chunks = 3,749 parents + 6,478 children, 48 s, 0 orphan children). 18 unit + 1 rechunk-idempotency integration test added (79 total passing).
 - **rag-day-08:** BGE-M3 encoder wrapper (`src/embeddings/bge_m3.py`). Lazy model load (2.3 GB weights only fetched on first `encode` call), thread-safe via `threading.Lock`, structural-type `BGEM3ModelProtocol` for DI-friendly unit testing (22 unit tests, no real model loaded). Device detection (auto/cuda/cpu) with fp16 auto-selection that mirrors FlagEmbedding's own CPU-forces-fp32 rule. `scripts/test_bge_m3.py` — smoke test on N chunks from Postgres (cosine determinism check, shape gates, top-5 sparse weights preview). `transformers<5` pin added because FlagEmbedding 1.3.5 uses pre-5.x APIs. Verified end-to-end on CPU: dense 1024-d self-similarity = 1.0, cross-similarity ~0.48-0.50, sparse weights non-empty on rare tokens.
 - **rag-day-09:** Phoenix observability via OpenTelemetry + OpenInference (`src/observability/tracing.py`). `setup_tracing(fastapi_app=...)` installs a global TracerProvider with OTLP/gRPC exporter pointing at the local Phoenix container on `:4317`, attaches `FastAPIInstrumentor` + `HTTPXClientInstrumentor` for automatic request spans. `arize-phoenix` added to docker-compose (single container, SQLite persistence, UI on `:6006`) — lighter than the Langfuse stack (3 containers), OTel-native so traces are portable to Jaeger/Grafana without code changes. 7 unit tests cover enabled/disabled/idempotent setup. Smoke test: 5 `/health` requests through FastAPI produce 5 visible traces in the Phoenix dashboard. Langfuse stays running alongside during the v0.0.x window — removed in v0.1.0.
-- **Other:** CUDA-enabled torch (`torch 2.5.1+cu121`) installed; `torch.cuda.is_available()` is now `True` on the GTX 1080 Ti (11 GB VRAM). Day-10 full-corpus embedding will run on GPU (~25 min expected) instead of CPU (~10 h).
+- **Tooling:** Three project-scoped Claude Code subagents in `.claude/agents/` — `dharma-code-reviewer`, `buddhist-scholar-proxy`, `eval-analyst`. Bilingual README (EN primary + RU translation with language selector).
+- **Infra:** CUDA-enabled torch (`torch 2.5.1+cu121`) installed; `torch.cuda.is_available()` is now `True` on the GTX 1080 Ti (11 GB VRAM). Day-10 full-corpus embedding will run on GPU (~25 min expected) instead of CPU (~10 h).
+
+### Changed
+- **Corpus shape:** flat 124,532 per-segment chunks → structured 10,227 (3,749 parents + 6,478 children). Retrieval will serve children, generation will read parents.
+- README rewritten and trimmed: removed premature claims about jhāna traditions, pragmatic dharma, and contemporary-masters corpus (not shipped yet — will return when backed by actual content).
+
+### Known limitations
+- No retrieval, no reranking, no `/api/query` endpoint — only `/health` responds.
+- Qdrant collection `dharma_v1` not yet populated (day-10 task).
+- Blockers still open: B-001 (golden eval set — buddhologist needed), B-002 (GPU was the blocker for day-13 reranker; now unblocked by CUDA install), B-003 (CI pipeline).
 
 ---
 
@@ -45,14 +63,16 @@ those land progressively through days 7-21 and ship in `v0.1.0`.
 
 ---
 
-## [0.1.0] — TBD (после Phase 1 Foundation, день 14)
+## [0.1.0] — TBD (после Phase 1 Foundation, день 21)
 
 Планируется:
-- Qdrant collection с 56K chunks (dense BGE-M3)
-- Базовый retrieval
-- Golden eval test set (150+ queries)
-- Langfuse observability
-- Baseline metrics: ref_hit@5, topic_hit@5
+- Qdrant collection `dharma_v1` с ~10K chunks (named vectors: dense BGE-M3 + sparse)
+- Hybrid retrieval (dense + sparse) + BGE-reranker-v2-m3
+- Contextual Retrieval (Anthropic method)
+- Golden eval test set (30+ QA, buddhologist-curated)
+- `POST /api/query` endpoint
+- Phoenix-only observability (Langfuse removed)
+- Baseline metrics: `ref_hit@5 ≥ 60%`, `faithfulness ≥ 0.80`
 
 ---
 
