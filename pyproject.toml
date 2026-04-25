@@ -41,8 +41,14 @@ dependencies = [
     # etc.). Lift the cap once FlagEmbedding ships a transformers-5
     # compatible release.
     "sentence-transformers>=3.2.1,<4.0",
-    "torch>=2.5.0",
+    # torch>=2.6 is required by transformers 4.49+ pickle-loader gate
+    # (CVE-2025-32434) — BGE-M3 ships only as pytorch_model.bin upstream,
+    # so safetensors short-circuit is unavailable.
+    "torch>=2.6.0",
     "transformers>=4.46.0,<5.0",
+    # huggingface-hub<1.0 because transformers 4.x reads pre-1.0 APIs.
+    # Pinning here keeps pip's resolver from exploring 1.x versions in CI.
+    "huggingface-hub>=0.34.0,<1.0",
     "FlagEmbedding>=1.3.0",  # BGE-M3 hybrid (dense + sparse + ColBERT)
 
     # Vector DB
