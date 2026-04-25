@@ -9,7 +9,6 @@ the other integration tests untouched.
 from __future__ import annotations
 
 import sqlalchemy as sa
-
 from alembic import command
 from alembic.config import Config
 

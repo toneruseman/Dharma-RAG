@@ -19,15 +19,14 @@ from collections.abc import AsyncIterator, Iterator
 import pytest
 import pytest_asyncio
 import sqlalchemy as sa
+from alembic import command
+from alembic.config import Config
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-
-from alembic import command
-from alembic.config import Config
 
 # Local dev-only credentials for the ``dharma-db`` docker-compose service.
 # These are default placeholders documented in ``.env.example``; real

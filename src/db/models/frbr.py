@@ -24,8 +24,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
+from sqlalchemy import Boolean, Computed, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.db.base import Base, TimestampMixin
@@ -202,9 +202,20 @@ class Chunk(Base, TimestampMixin):
         JSONB, nullable=False, default=dict, server_default="{}"
     )
 
+    # BM25-backing FTS vector — GENERATED STORED from text_ascii_fold by
+    # Postgres (migration 003). Mapped read-only so the ORM never tries
+    # to INSERT a value here. Queries use raw SQL with ts_rank_cd; this
+    # mapping exists mainly for type checkers and schema introspection.
+    fts_vector: Mapped[str | None] = mapped_column(
+        TSVECTOR,
+        Computed("to_tsvector('simple', COALESCE(text_ascii_fold, ''))", persisted=True),
+        nullable=True,
+    )
+
     __table_args__ = (
         Index("ix_chunk_instance_seq", "instance_id", "sequence"),
         Index("ix_chunk_parent", "parent_chunk_id"),
         Index("ix_chunk_segment", "segment_id"),
         Index("ix_chunk_pericope", "pericope_id"),
+        Index("ix_chunk_fts_vector", "fts_vector", postgresql_using="gin"),
     )
