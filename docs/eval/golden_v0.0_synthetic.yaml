@@ -1,0 +1,330 @@
+# Synthetic golden eval set v0.0
+# ============================================================================
+# WARNING: NOT AUTHORITATIVE — pending buddhologist review
+# ============================================================================
+#
+# This file was generated from canonical sutta knowledge (Theravāda canon,
+# SuttaCentral catalog, standard secondary literature) by the project's
+# AI assistant on 2026-04-25. It is a *placeholder* used for:
+#
+#   1. Relative-metric iteration on the retrieval pipeline (day 14+).
+#   2. Smoke-testing that the pipeline is wired correctly end-to-end.
+#   3. Catching regressions across the v1 → v2 → v3 development path.
+#
+# It MUST NOT be used to produce absolute quality claims (e.g. "Dharma-RAG
+# achieves X% accuracy"). For that we need an authoritative golden set
+# curated by a qualified buddhologist — see B-001 in docs/STATUS.md.
+#
+# When the buddhologist arrives, this file will be REPLACED (not extended)
+# by golden_v0.1_authoritative.yaml. Until then, treat all numerical
+# results from this file as "directional, relative-only".
+#
+# ============================================================================
+
+metadata:
+  version: "0.0-synthetic"
+  authoritative: false
+  generated_date: "2026-04-25"
+  generator: "claude-opus-4-7 (curated from canonical sutta knowledge)"
+  total_items: 30
+  difficulty_distribution:
+    easy: 10        # one obvious canonical sutta, well-known by name
+    medium: 10      # thematic, may span 2-3 suttas, requires reasoning
+    hard: 10        # cross-sutta synthesis or subtle conceptual question
+  language_distribution:
+    en: 26          # English queries (most common user language)
+    ru: 2           # Russian queries (cross-lingual sanity)
+    pli: 2          # Bare Pāli term queries (gap test)
+  topic_distribution:
+    meditation: 8
+    doctrine: 7
+    ethics: 4
+    narrative: 4
+    monastic: 3
+    soteriology: 4
+
+# ----------------------------------------------------------------------------
+# EASY (10 items) — one canonical sutta, obvious match expected
+# ----------------------------------------------------------------------------
+
+queries:
+  - id: "qa_001"
+    query: "What is mindfulness of breathing?"
+    expected_works: ["mn118"]
+    expected_segments: ["mn118:1.4", "mn118:19.1"]
+    topic: "meditation"
+    language: "en"
+    difficulty: "easy"
+    rationale: "MN 118 is the canonical Anāpānassati Sutta — the primary text on breath meditation."
+
+  - id: "qa_002"
+    query: "Where did the Buddha first teach the four noble truths?"
+    expected_works: ["sn56.11"]
+    expected_segments: ["sn56.11:0.1"]
+    topic: "doctrine"
+    language: "en"
+    difficulty: "easy"
+    rationale: "SN 56.11 (Dhammacakkappavattana) is the Buddha's first sermon at Isipatana, where the Four Noble Truths were first declared."
+
+  - id: "qa_003"
+    query: "What is the Mahāsatipaṭṭhāna Sutta about?"
+    expected_works: ["dn22"]
+    expected_segments: ["dn22:0.1"]
+    topic: "meditation"
+    language: "en"
+    difficulty: "easy"
+    rationale: "DN 22 is the long discourse on the four foundations of mindfulness."
+
+  - id: "qa_004"
+    query: "Tell me about the discourse on loving-kindness"
+    expected_works: ["snp1.8", "kn1.9"]
+    topic: "meditation"
+    language: "en"
+    difficulty: "easy"
+    rationale: "Karaṇīya Metta Sutta (Snp 1.8 / Khp 9) is the canonical text on mettā."
+
+  - id: "qa_005"
+    query: "Who was Anāthapiṇḍika?"
+    expected_works: ["mn143", "sn2.20", "sn55.26", "sn55.27"]
+    topic: "narrative"
+    language: "en"
+    difficulty: "easy"
+    rationale: "Anāthapiṇḍika was the Buddha's chief lay supporter; MN 143 is 'Advice to Anāthapiṇḍika' on his deathbed."
+
+  - id: "qa_006"
+    query: "What is the noble eightfold path?"
+    expected_works: ["sn45.8", "sn56.11"]
+    topic: "doctrine"
+    language: "en"
+    difficulty: "easy"
+    rationale: "SN 45.8 (Vibhaṅga) is the canonical analysis of the eightfold path; SN 56.11 introduces it."
+
+  - id: "qa_007"
+    query: "What is the simile of the saw?"
+    expected_works: ["mn21"]
+    expected_segments: ["mn21:0.1"]
+    topic: "ethics"
+    language: "en"
+    difficulty: "easy"
+    rationale: "MN 21 (Kakacūpama Sutta) — the simile of bandits sawing a person limb from limb, teaching equanimity."
+
+  - id: "qa_008"
+    query: "What is the parable of the raft?"
+    expected_works: ["mn22"]
+    topic: "doctrine"
+    language: "en"
+    difficulty: "easy"
+    rationale: "MN 22 (Alagaddūpama Sutta) — the simile that the Dhamma is like a raft to be left behind after crossing."
+
+  - id: "qa_009"
+    query: "What was the Buddha's last meal?"
+    expected_works: ["dn16"]
+    topic: "narrative"
+    language: "en"
+    difficulty: "easy"
+    rationale: "DN 16 (Mahāparinibbāna) describes the meal at Cunda's house and the Buddha's final illness."
+
+  - id: "qa_010"
+    query: "How should a layperson live?"
+    expected_works: ["dn31"]
+    topic: "ethics"
+    language: "en"
+    difficulty: "easy"
+    rationale: "DN 31 (Sigālovāda) — the canonical sutta on lay ethics and the six directions."
+
+# ----------------------------------------------------------------------------
+# MEDIUM (10 items) — thematic, multi-sutta, requires aggregation
+# ----------------------------------------------------------------------------
+
+  - id: "qa_011"
+    query: "Teachings on the four jhānas"
+    expected_works: ["mn10", "dn22", "mn27", "an4.41"]
+    topic: "meditation"
+    language: "en"
+    difficulty: "medium"
+    rationale: "Many suttas describe the jhāna pericope; the four foundations and the gradual training are canonical."
+
+  - id: "qa_012"
+    query: "How should one approach death?"
+    expected_works: ["mn143", "dn16", "sn22.1"]
+    topic: "soteriology"
+    language: "en"
+    difficulty: "medium"
+    rationale: "MN 143 (Anāthapiṇḍika at deathbed), DN 16 (Buddha's parinibbāna), SN 22.1 (Nakulapitā)."
+
+  - id: "qa_013"
+    query: "What is right livelihood?"
+    expected_works: ["sn45.8", "an5.177"]
+    topic: "ethics"
+    language: "en"
+    difficulty: "medium"
+    rationale: "SN 45.8 defines right livelihood; AN 5.177 lists the five wrong trades for laypeople."
+
+  - id: "qa_014"
+    query: "Teachings on dependent origination"
+    expected_works: ["sn12.1", "sn12.2", "sn12.10", "mn38"]
+    topic: "doctrine"
+    language: "en"
+    difficulty: "medium"
+    rationale: "The Nidānasaṃyutta (SN 12) is dedicated to paṭiccasamuppāda; MN 38 explains it via the senses."
+
+  - id: "qa_015"
+    query: "How does the Buddha teach about anger?"
+    expected_works: ["sn7.2", "mn21", "an7.60"]
+    topic: "ethics"
+    language: "en"
+    difficulty: "medium"
+    rationale: "SN 7.2 (Akkosaka) — the abusive brahmin; MN 21 — equanimity even under torture; AN 7.60 — disadvantages of anger."
+
+  - id: "qa_016"
+    query: "What does the Buddha say about wealth?"
+    expected_works: ["an4.61", "an4.62", "dn31"]
+    topic: "ethics"
+    language: "en"
+    difficulty: "medium"
+    rationale: "AN 4.61-62 describe proper acquisition and use of wealth; DN 31 covers the householder's economic ethics."
+
+  - id: "qa_017"
+    query: "Teachings about karma and its results"
+    expected_works: ["mn135", "mn136", "an3.34"]
+    topic: "doctrine"
+    language: "en"
+    difficulty: "medium"
+    rationale: "MN 135 (Cūḷakammavibhaṅga) and MN 136 (Mahākammavibhaṅga) are the Lesser and Greater Analyses of Action."
+
+  - id: "qa_018"
+    query: "How to develop concentration"
+    expected_works: ["an4.41", "sn47.4", "mn36"]
+    topic: "meditation"
+    language: "en"
+    difficulty: "medium"
+    rationale: "AN 4.41 — four developments of samādhi; SN 47.4 — sati as foundation; MN 36 — Buddha's own awakening narrative."
+
+  - id: "qa_019"
+    query: "What is right view?"
+    expected_works: ["mn9", "mn117"]
+    topic: "doctrine"
+    language: "en"
+    difficulty: "medium"
+    rationale: "MN 9 (Sammādiṭṭhi Sutta) is the canonical analysis of right view; MN 117 distinguishes mundane and supramundane."
+
+  - id: "qa_020"
+    query: "Teachings on impermanence"
+    expected_works: ["sn22.59", "sn22.45", "sn35.1"]
+    topic: "doctrine"
+    language: "en"
+    difficulty: "medium"
+    rationale: "SN 22.59 (Anattalakkhaṇa) — the second sermon on three marks; SN 22.45 — aniccā as ground for liberation; SN 35.1 — the senses as anicca."
+
+# ----------------------------------------------------------------------------
+# HARD (10 items) — cross-sutta synthesis, subtle questions, gap tests
+# ----------------------------------------------------------------------------
+
+  - id: "qa_021"
+    query: "What is the relationship between sati and samādhi?"
+    expected_works: ["mn117", "an4.41", "sn47.4"]
+    topic: "meditation"
+    language: "en"
+    difficulty: "hard"
+    rationale: "MN 117 places sati within the eightfold path; AN 4.41 and SN 47.4 show samādhi developed *through* sati."
+
+  - id: "qa_022"
+    query: "Did the Buddha say there is a self?"
+    expected_works: ["sn44.10", "mn22", "sn22.59"]
+    topic: "doctrine"
+    language: "en"
+    difficulty: "hard"
+    rationale: "SN 44.10 — Buddha refuses to answer 'is there a self?' with yes/no (avyākata); MN 22 critiques attachment to views; SN 22.59 — the second sermon on anatta."
+
+  - id: "qa_023"
+    query: "What is nibbāna in the suttas?"
+    expected_works: ["sn43.14", "ud8.1", "ud8.3", "an3.55"]
+    topic: "soteriology"
+    language: "en"
+    difficulty: "hard"
+    rationale: "Udāna 8 (Pāṭaligāmiya) describes nibbāna in poetic terms; SN 43 lists its synonyms; AN 3.55 — sandiṭṭhika nibbāna here and now."
+
+  - id: "qa_024"
+    query: "How does the Buddha respond to metaphysical questions?"
+    expected_works: ["mn63", "mn72"]
+    topic: "doctrine"
+    language: "en"
+    difficulty: "hard"
+    rationale: "MN 63 (Cūḷamāluṅkya) — the poisoned arrow simile; MN 72 (Aggivacchagotta) — the unanswered questions."
+
+  - id: "qa_025"
+    query: "What is the role of faith in the Buddhist path?"
+    expected_works: ["an5.38", "sn55.1", "mn70"]
+    topic: "soteriology"
+    language: "en"
+    difficulty: "hard"
+    rationale: "AN 5.38 lists benefits of saddhā; SN 55.1 — saddhā as a stream-enterer's quality; MN 70 distinguishes faith-followers from dhamma-followers."
+
+  - id: "qa_026"
+    query: "What is the difference between samatha and vipassanā?"
+    expected_works: ["an4.94", "mn149"]
+    topic: "meditation"
+    language: "en"
+    difficulty: "hard"
+    rationale: "AN 4.94 — four types of meditators by samatha/vipassanā balance; MN 149 — vipassanā via the senses."
+
+  - id: "qa_027"
+    query: "Teachings on monastic ethics and self-discipline"
+    expected_works: ["mn6", "an10.61", "mn39"]
+    topic: "monastic"
+    language: "en"
+    difficulty: "hard"
+    rationale: "MN 6 (Ākaṅkheyya) — what a mendicant should aspire to; AN 10.61 — sequence of monastic disciplines; MN 39 — gradual training."
+
+  - id: "qa_028"
+    query: "How should a meditator deal with the five hindrances?"
+    expected_works: ["sn46.51", "sn46.55", "mn39"]
+    topic: "meditation"
+    language: "en"
+    difficulty: "hard"
+    rationale: "SN 46.51 — nutriments of the hindrances; SN 46.55 — how the hindrances obscure perception; MN 39 — abandoning them as part of gradual training."
+
+  # Russian cross-lingual probes (synthetic, dense channel should still cope)
+
+  - id: "qa_029"
+    query: "Что такое страдание в буддизме?"
+    expected_works: ["sn56.11", "dn22", "mn141"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "hard"
+    rationale: "Russian for 'what is suffering in Buddhism?' — should retrieve the four noble truths suttas. Dense BGE-M3 multilingual head must carry this query alone."
+
+  - id: "qa_030"
+    query: "Учение о четырёх благородных истинах"
+    expected_works: ["sn56.11", "sn56.13", "mn141"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "hard"
+    rationale: "Russian for 'teaching on the four noble truths' — same target as qa_002 but in Russian. Tests cross-lingual recall."
+
+# ============================================================================
+# Notes for the buddhologist who reviews this file
+# ============================================================================
+#
+# When reviewing, please:
+#
+#  1. For each query, check whether ``expected_works`` is reasonable. If
+#     additional canonical works should be in the list, add them. If a
+#     listed work is wrong, remove it.
+#
+#  2. For ``expected_segments`` (where present): these are *optional* —
+#     used by stricter eval ("did we hit the *right paragraph* in the
+#     right sutta?"). You may leave these out if uncertain.
+#
+#  3. Consider adding ``forbidden_works`` — works that should NOT appear
+#     in the top-K. Useful for catching cases where the system retrieves
+#     superficially similar but doctrinally wrong material.
+#
+#  4. Consider adding 30-50 more items focused on:
+#     - Vinaya questions (currently zero, since we have no Vinaya in
+#       v0.0.3 corpus)
+#     - Subtle doctrinal distinctions (e.g. anattā vs anicca)
+#     - Specific Pāli term explanations
+#
+# Save the reviewed file as ``golden_v0.1_authoritative.yaml`` (do not
+# overwrite this synthetic version).
