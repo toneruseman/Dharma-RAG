@@ -40,7 +40,8 @@
 | rag-day-08 | FlagEmbedding + BGE-M3 (dense + sparse на 100 чанках) | ✅ Done | `9f7e092` |
 | rag-day-09 | Phoenix observability + OpenInference | ✅ Done | `c2defe2` |
 | rag-day-10 | Qdrant collection `dharma_v1` + named vectors + full ingest (6478 child chunks, 4:40 min on 1080 Ti) | ✅ Done | `330ff30` |
-| rag-day-11 | BM25 via Postgres FTS (`simple` config on `text_ascii_fold`, GIN index, generated column) | ✅ Done | (this branch) |
+| rag-day-11 | BM25 via Postgres FTS (`simple` config on `text_ascii_fold`, GIN index, generated column) | ✅ Done | `3627685` |
+| rag-day-12 | Hybrid RRF (dense + sparse + BM25) + `POST /api/retrieve`, 62-96 ms/query on GPU | ✅ Done | (this branch) |
 | … | (всего 120 дней в плане) | | |
 
 ### App-трек
