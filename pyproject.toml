@@ -159,6 +159,18 @@ target-version = "py311"
 select = ["E", "F", "W", "I", "B", "UP", "N", "S"]
 ignore = ["E501", "S101"]
 
+[tool.ruff.lint.isort]
+# Ruff's heuristic spots the top-level ``alembic/`` directory (our
+# migrations folder — env.py + versions/, no __init__.py) and tags
+# ``from alembic import command`` as first-party, while keeping
+# ``from alembic.config import Config`` third-party. Different ruff
+# versions resolve this inconsistently between local and CI. Force
+# the resolution by declaring both: ``src`` is the only first-party
+# code we have; ``alembic`` is unambiguously a third-party PyPI
+# package despite the local-dir collision.
+known-first-party = ["src"]
+known-third-party = ["alembic"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
