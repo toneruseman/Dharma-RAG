@@ -16,6 +16,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from src import __version__
+from src.api.retrieve import install_router as install_retrieve_router
+from src.api.retrieve import shutdown_resources as shutdown_retrieve_resources
 from src.config import get_settings
 from src.logging_config import get_logger, setup_logging
 from src.observability import setup_tracing, shutdown_tracing
@@ -54,6 +56,7 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            await shutdown_retrieve_resources()
             shutdown_tracing()
             log.info("api.shutdown")
 
@@ -75,6 +78,11 @@ def create_app() -> FastAPI:
     # is processed. Attaching from inside ``lifespan`` is too late: the
     # middleware never runs and every request is invisible to Phoenix.
     setup_tracing(fastapi_app=app)
+
+    # Mount the retrieval router. install_router() also creates the
+    # singleton RetrievalResources (BGE-M3 encoder, Qdrant client, DB
+    # engine) — actual model load is still deferred to first encode.
+    install_retrieve_router(app)
 
     @app.get(
         "/health",
