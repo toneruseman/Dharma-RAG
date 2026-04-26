@@ -36,9 +36,11 @@ from src.config import get_settings
 from src.embeddings.bge_m3 import BGEM3Encoder
 from src.retrieval.hybrid import (
     DEFAULT_PER_CHANNEL_LIMIT,
+    DEFAULT_RERANK,
     DEFAULT_TOP_K,
     hybrid_search,
 )
+from src.retrieval.reranker import BGEReranker
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +58,28 @@ class RetrieveRequest(BaseModel):
         DEFAULT_TOP_K,
         ge=1,
         le=100,
-        description="Final number of fused results to return.",
+        description=(
+            "Final number of results to return. With rerank=True this is the "
+            "reranker's output size; without rerank, it's the RRF top-N. "
+            "Default 8."
+        ),
     )
     per_channel_limit: int = Field(
         DEFAULT_PER_CHANNEL_LIMIT,
         ge=1,
         le=200,
         description=(
-            "Top-N pulled from each individual channel (dense, sparse, BM25) " "before RRF fusion."
+            "Top-N pulled from each individual channel (dense, sparse, BM25) "
+            "before RRF fusion. With rerank=True this is also the reranker's "
+            "input pool size."
+        ),
+    )
+    rerank: bool = Field(
+        DEFAULT_RERANK,
+        description=(
+            "Run the cross-encoder reranker over the RRF candidates. True by "
+            "default. Set False for the bi-encoder-only baseline (faster, "
+            "lower precision) or for A/B comparisons."
         ),
     )
 
@@ -79,6 +95,14 @@ class RetrieveResultItem(BaseModel):
     text: str
     rrf_score: float
     per_channel_rank: dict[str, int | None]
+    rerank_score: float | None = Field(
+        default=None,
+        description="Cross-encoder score (None if rerank=false on this request).",
+    )
+    rrf_rank: int | None = Field(
+        default=None,
+        description="Position in the RRF list before reranking (None if no rerank).",
+    )
 
 
 class RetrieveResponse(BaseModel):
@@ -106,6 +130,10 @@ class RetrievalResources:
         # otherwise — keeps the API runnable on CI/laptop without
         # special-casing device selection per environment.
         self.encoder = BGEM3Encoder(device="auto", use_fp16=True)
+        # Lazy-loaded reranker (1.1 GB BGE-reranker-v2-m3). Weights tug
+        # only on the first ``rerank()`` call, so tests and rerank=false
+        # requests never pay for it.
+        self.reranker = BGEReranker(device="auto", use_fp16=True)
         self.qdrant = QdrantClient(url=settings.qdrant_url)
         self.engine = create_async_engine(settings.database_url, future=True, echo=False)
         self.session_maker = async_sessionmaker(self.engine, expire_on_commit=False)
@@ -159,8 +187,10 @@ async def retrieve(
         encoder=_resources.encoder,
         qdrant_client=_resources.qdrant,
         db_session=session,
+        reranker=_resources.reranker,
         top_k=body.top_k,
         per_channel_limit=body.per_channel_limit,
+        rerank=body.rerank,
     )
 
     return RetrieveResponse(
@@ -175,6 +205,8 @@ async def retrieve(
                 text=h.text,
                 rrf_score=h.rrf_score,
                 per_channel_rank=h.per_channel_rank,
+                rerank_score=h.rerank_score,
+                rrf_rank=h.rrf_rank,
             )
             for h in hits
         ],
@@ -184,6 +216,7 @@ async def retrieve(
             "channels_s": timings.channels_s,
             "fusion_s": timings.fusion_s,
             "enrich_s": timings.enrich_s,
+            "rerank_s": timings.rerank_s,
         },
     )
 

@@ -164,10 +164,11 @@ async def test_empty_query_short_circuits_without_invoking_anyone(
         encoder=encoder,
         qdrant_client=client,
         db_session=object(),  # type: ignore[arg-type]
+        rerank=False,
     )
 
     assert hits == []
-    assert timings == HybridSearchTimings(0.0, 0.0, 0.0, 0.0, 0.0)
+    assert timings == HybridSearchTimings(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     assert encoder.calls == []
     assert client.calls == []
     assert fake_enrich == []
@@ -184,6 +185,7 @@ async def test_whitespace_only_query_treated_as_empty(
         encoder=encoder,
         qdrant_client=client,
         db_session=object(),  # type: ignore[arg-type]
+        rerank=False,
     )
     assert hits == []
     assert encoder.calls == []
@@ -217,6 +219,7 @@ async def test_orchestrator_runs_all_three_channels_and_fuses(
         encoder=encoder,
         qdrant_client=client,
         db_session=object(),  # type: ignore[arg-type]
+        rerank=False,
     )
 
     # Encoder was called exactly once with the query.
@@ -255,6 +258,7 @@ async def test_orchestrator_truncates_to_top_k(
         qdrant_client=client,
         db_session=object(),  # type: ignore[arg-type]
         top_k=3,
+        rerank=False,
     )
     assert len(hits) == 3
     # The top 3 dense hits should be the first 3 in our generated list.
@@ -273,6 +277,7 @@ async def test_orchestrator_passes_per_channel_limit(
         qdrant_client=client,
         db_session=object(),  # type: ignore[arg-type]
         per_channel_limit=50,
+        rerank=False,
     )
     for call in client.calls:
         assert call["limit"] == 50
@@ -291,9 +296,176 @@ async def test_orchestrator_returns_empty_when_no_channel_hits(
         encoder=encoder,
         qdrant_client=client,
         db_session=object(),  # type: ignore[arg-type]
+        rerank=False,
     )
     assert hits == []
     # Encoder still ran (so timings.encode_s > 0); enrichment did not.
     assert timings.encode_s >= 0.0
     assert timings.enrich_s == 0.0
     assert fake_enrich == []
+
+
+# ---------------------------------------------------------------------------
+# Reranker integration (day 13)
+# ---------------------------------------------------------------------------
+
+
+class FakeReranker:
+    """Minimal stand-in for BGEReranker used in orchestrator tests.
+
+    Strategy: ``score = -rrf_rank`` — i.e. the reranker is "inverse",
+    so it RE-orders results from RRF. This lets us assert that the
+    orchestrator actually calls the reranker and uses its output, not
+    just blindly truncates RRF.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def rerank(
+        self,
+        query: str,
+        candidates: Any,
+        *,
+        top_k: int,
+    ) -> list[Any]:
+        from src.retrieval.reranker import RerankedHit
+
+        self.calls.append({"query": query, "n": len(candidates), "top_k": top_k})
+        # Reverse the RRF order: highest rrf_rank gets highest score.
+        scored = [
+            RerankedHit(
+                chunk_id=c.chunk_id,
+                score=float(c.rrf_rank),
+                rrf_rank=c.rrf_rank,
+            )
+            for c in candidates
+        ]
+        scored.sort(key=lambda h: h.score, reverse=True)
+        return scored[:top_k]
+
+
+@pytest.fixture
+def fake_reranker() -> FakeReranker:
+    return FakeReranker()
+
+
+@pytest.mark.asyncio
+async def test_rerank_true_without_reranker_raises(
+    fake_enrich: list[dict[str, Any]], fake_bm25: dict[str, list[Any]]
+) -> None:
+    encoder = FakeEncoder()
+    client = FakeQdrantClient()
+    with pytest.raises(ValueError, match="rerank=True requires a reranker"):
+        await hybrid_search(
+            query="foo",
+            encoder=encoder,
+            qdrant_client=client,
+            db_session=object(),  # type: ignore[arg-type]
+            rerank=True,
+            # reranker=None implicitly
+        )
+
+
+@pytest.mark.asyncio
+async def test_rerank_changes_order(
+    fake_enrich: list[dict[str, Any]],
+    fake_bm25: dict[str, list[Any]],
+    fake_reranker: FakeReranker,
+) -> None:
+    """FakeReranker reverses RRF order. Verify the final hits reflect
+    the reranker's order, not RRF's, and that rerank_score / rrf_rank
+    are populated.
+    """
+    chunks = [uuid4() for _ in range(5)]
+    encoder = FakeEncoder()
+    client = FakeQdrantClient(
+        dense_hits=[FakePoint(id=str(c), score=1.0 - i * 0.01) for i, c in enumerate(chunks)],
+    )
+
+    hits, timings = await hybrid_search(
+        query="foo",
+        encoder=encoder,
+        qdrant_client=client,
+        db_session=object(),  # type: ignore[arg-type]
+        reranker=fake_reranker,
+        rerank=True,
+        top_k=3,
+        per_channel_limit=5,
+    )
+
+    # Reranker was called once with 5 candidates, asked for top 3.
+    assert len(fake_reranker.calls) == 1
+    assert fake_reranker.calls[0]["query"] == "foo"
+    assert fake_reranker.calls[0]["n"] == 5
+    assert fake_reranker.calls[0]["top_k"] == 3
+
+    # Output is exactly 3 hits, in REVERSED RRF order (because our
+    # FakeReranker assigns score = rrf_rank, so rank 4 wins over rank 0).
+    assert len(hits) == 3
+    assert [h.chunk_id for h in hits] == [chunks[4], chunks[3], chunks[2]]
+    # rerank_score and rrf_rank populated on every hit.
+    assert all(h.rerank_score is not None for h in hits)
+    assert all(h.rrf_rank is not None for h in hits)
+    assert hits[0].rrf_rank == 4
+    assert hits[0].rerank_score == 4.0
+    # rerank_s timing is non-zero now.
+    assert timings.rerank_s > 0
+
+
+@pytest.mark.asyncio
+async def test_rerank_false_skips_reranker_even_when_passed(
+    fake_enrich: list[dict[str, Any]],
+    fake_bm25: dict[str, list[Any]],
+    fake_reranker: FakeReranker,
+) -> None:
+    """Caller can opt out per-request even with a reranker available."""
+    chunks = [uuid4() for _ in range(3)]
+    encoder = FakeEncoder()
+    client = FakeQdrantClient(
+        dense_hits=[FakePoint(id=str(c), score=1.0 - i * 0.01) for i, c in enumerate(chunks)],
+    )
+
+    hits, timings = await hybrid_search(
+        query="foo",
+        encoder=encoder,
+        qdrant_client=client,
+        db_session=object(),  # type: ignore[arg-type]
+        reranker=fake_reranker,
+        rerank=False,
+        top_k=3,
+    )
+
+    # Reranker NOT invoked.
+    assert fake_reranker.calls == []
+    assert timings.rerank_s == 0.0
+    # Hits in original RRF order, no rerank_score.
+    assert [h.chunk_id for h in hits] == chunks[:3]
+    assert all(h.rerank_score is None for h in hits)
+    assert all(h.rrf_rank is None for h in hits)
+
+
+@pytest.mark.asyncio
+async def test_rerank_with_no_channel_hits_skips_reranker(
+    fake_enrich: list[dict[str, Any]],
+    fake_bm25: dict[str, list[Any]],
+    fake_reranker: FakeReranker,
+) -> None:
+    """Empty fused list means no candidates — reranker shouldn't be called."""
+    encoder = FakeEncoder()
+    client = FakeQdrantClient()  # no hits
+    fake_bm25["hits"] = []
+
+    hits, timings = await hybrid_search(
+        query="foo",
+        encoder=encoder,
+        qdrant_client=client,
+        db_session=object(),  # type: ignore[arg-type]
+        reranker=fake_reranker,
+        rerank=True,
+        top_k=8,
+    )
+
+    assert hits == []
+    assert fake_reranker.calls == []
+    assert timings.rerank_s == 0.0

@@ -41,6 +41,12 @@ class HybridHit:
     placed this document. ``None`` means "did not appear in this
     channel's top-N" and is the diagnostic that motivated keeping the
     field.
+
+    ``rerank_score`` is populated when the day-13 cross-encoder pass
+    runs (``rerank=True`` in the API). When the request opts out, the
+    field is ``None`` and the result order is RRF order. ``rrf_rank``
+    likewise records the position in the RRF list, useful for noting
+    "the reranker pulled this from rank 12 up to rank 2".
     """
 
     chunk_id: UUID
@@ -51,3 +57,5 @@ class HybridHit:
     text: str
     rrf_score: float
     per_channel_rank: dict[str, int | None]
+    rerank_score: float | None = None
+    rrf_rank: int | None = None

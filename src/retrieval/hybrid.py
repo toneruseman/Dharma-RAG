@@ -1,37 +1,41 @@
-"""Hybrid retrieval orchestrator — encode → 3 channels in parallel → RRF → enrich.
+"""Hybrid retrieval orchestrator — encode → 3 channels → RRF → enrich → rerank.
 
-End-to-end shape
-----------------
+End-to-end shape (after day-13)
+-------------------------------
 1. Encode the query once via BGE-M3 (produces dense + sparse together).
 2. Dispatch three channels concurrently:
    * dense:  ``dense_search`` against Qdrant ``bge_m3_dense``
    * sparse: ``sparse_search`` against Qdrant ``bge_m3_sparse``
    * bm25:   ``bm25.search`` against Postgres FTS
 3. Fuse the three ranked lists with RRF (k=60, equal weights).
-4. Truncate to the requested ``top_k`` (default 20).
-5. JOIN Postgres once for ``chunk.text`` + ``work.canonical_id`` +
-   ``segment_id`` + ``parent_chunk_id`` + ``is_parent``.
-6. Return a ``HybridHit`` per surviving doc, with provenance.
+4. Truncate fused list to ``per_channel_limit`` candidates if reranker
+   is enabled, else to ``top_k`` directly.
+5. JOIN Postgres once for ``chunk.text`` + work / segment metadata.
+6. **(NEW day 13)** Optionally rerank via BGE-reranker-v2-m3
+   cross-encoder, keeping ``top_k``.
+7. Return ``HybridHit`` per surviving doc, with provenance.
 
-Why a single orchestrator instead of three separate calls
----------------------------------------------------------
-* **Encode once.** BGE-M3 is the slowest step (~30 ms GPU, ~200 ms CPU).
-  Doing it in the orchestrator and feeding both Qdrant channels keeps
-  latency near the max of the three channels rather than their sum.
+Why a single orchestrator instead of separate calls
+---------------------------------------------------
+* **Encode once.** BGE-M3 is the slowest step (~30 ms GPU). Doing it
+  here and feeding both Qdrant channels keeps total latency near the
+  max of the three channels rather than their sum.
 * **Single Postgres round-trip for enrichment.** Qdrant returns just
   IDs; BM25 already has metadata. We unify by re-fetching everything
-  from Postgres in one batched ``WHERE chunk.id IN (…)`` query, so the
-  shape of what the API endpoint sees is identical regardless of which
-  channel found a doc.
-* **Single place to add concerns.** Reranker (day 13) and parent-child
-  expansion (day 18) plug in here without touching the channel modules.
+  from Postgres in one batched ``WHERE chunk.id IN (…)`` query.
+* **Reranker after enrich.** Cross-encoder needs raw chunk text — it
+  must come from Postgres anyway, so we enrich first and pass texts
+  straight to the reranker. Single DB trip, no extra round.
+* **Single place to add concerns.** Parent-child expansion (day 18)
+  plugs in here without touching the channel modules.
 
-Defaults locked from the day-12 design discussion
--------------------------------------------------
-* Equal channel weights (no per-channel boost). RRF on rank, not score.
+Defaults locked from the design discussions
+-------------------------------------------
+* Equal channel weights in RRF (rank-based, not score-blending).
 * No query-encoding cache (deferred to day-18 semantic cache).
 * Empty results return ``[]``, not 404 — the API layer translates that.
 * asyncio.gather for channel parallelism.
+* Reranker on by default (``rerank=True``); disable by passing False.
 """
 
 from __future__ import annotations
@@ -39,38 +43,36 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections.abc import Hashable
+from collections.abc import Hashable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
 import sqlalchemy as sa
+from opentelemetry import trace
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models.frbr import Chunk, Expression, Instance, Work
 from src.embeddings.bge_m3 import EncodedBatch
 from src.retrieval import bm25, dense, sparse
+from src.retrieval.reranker import CandidateForRerank, RerankedHit
 from src.retrieval.rrf import DEFAULT_K, FusedHit, reciprocal_rank_fusion
 from src.retrieval.schemas import ChannelHit, HybridHit
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 # Per-channel candidate pool size. Plan calls for top-30 each → RRF →
-# top-20 fused. The 30/20 ratio gives the union ~50-90 candidates
-# depending on overlap, which is plenty of recall for downstream
-# reranking on day 13.
+# top-30 (input to reranker) → top-8 final. The 30/8 ratio gives the
+# reranker plenty of recall while keeping cross-encoder forward passes
+# bounded for ~50-150 ms of GPU time.
 DEFAULT_PER_CHANNEL_LIMIT: int = 30
-DEFAULT_TOP_K: int = 20
+DEFAULT_TOP_K: int = 8
+DEFAULT_RERANK: bool = True
 
 
 class EncoderProtocol(Protocol):
-    """Subset of :class:`src.embeddings.bge_m3.BGEM3Encoder` we use.
-
-    Declaring it as a Protocol keeps the orchestrator testable without
-    loading the real 2.3 GB BGE-M3 weights. Day-13 may need to extend
-    the protocol with per-token attention if Contextual Retrieval grows
-    a feature there; for now the simple encode signature is enough.
-    """
+    """Subset of :class:`src.embeddings.bge_m3.BGEM3Encoder` we use."""
 
     def encode(
         self,
@@ -88,19 +90,31 @@ class QdrantQueryProtocol(Protocol):
         ...
 
 
+class RerankerCallable(Protocol):
+    """Subset of :class:`src.retrieval.reranker.BGEReranker` we call."""
+
+    def rerank(
+        self,
+        query: str,
+        candidates: Sequence[CandidateForRerank],
+        *,
+        top_k: int,
+    ) -> list[RerankedHit]: ...
+
+
 @dataclass(frozen=True, slots=True)
 class HybridSearchTimings:
     """Per-stage wall-clock times (seconds) for observability.
 
-    Plan target: 20 candidates in <200 ms end-to-end. These timings
-    let the API layer surface a single ``latency_ms`` field while a
-    smoke script can drill into where the time went.
+    Plan target: 8 candidates with reranker in <500 ms end-to-end.
+    Without reranker, we used to land at ~70-100 ms (day 12 numbers).
     """
 
     encode_s: float
     channels_s: float
     fusion_s: float
     enrich_s: float
+    rerank_s: float
     total_s: float
 
 
@@ -110,105 +124,191 @@ async def hybrid_search(
     encoder: EncoderProtocol,
     qdrant_client: QdrantQueryProtocol,
     db_session: AsyncSession,
+    reranker: RerankerCallable | None = None,
     top_k: int = DEFAULT_TOP_K,
     per_channel_limit: int = DEFAULT_PER_CHANNEL_LIMIT,
     rrf_k: int = DEFAULT_K,
+    rerank: bool = DEFAULT_RERANK,
 ) -> tuple[list[HybridHit], HybridSearchTimings]:
-    """Run all three channels for ``query`` and return fused-and-enriched hits.
+    """Run all stages for ``query`` and return fused/enriched/(reranked) hits.
 
     Parameters
     ----------
     query:
-        Free-form user query. Empty strings return ``([], timings)``
-        without invoking the encoder or any DB call.
-    encoder:
-        BGE-M3 encoder. Must satisfy :class:`EncoderProtocol`.
-    qdrant_client:
-        QdrantClient (production) or fake (tests).
-    db_session:
-        Open async session for both BM25 (Postgres FTS) and the final
-        enrichment JOIN. Caller-owned, no commit issued by us.
+        Free-form user query. Empty strings short-circuit to ``([], 0)``.
+    encoder, qdrant_client, db_session:
+        Shared resources, lifecycle managed by the caller (FastAPI app
+        in production, fixtures in tests).
+    reranker:
+        Optional :class:`src.retrieval.reranker.BGEReranker` instance.
+        Required when ``rerank=True``; passing ``rerank=True`` without
+        a reranker raises ``ValueError``. ``rerank=False`` works without.
     top_k:
-        Final number of fused hits to return. Default 20 matches the
-        day-12 plan's gate.
+        Final number of hits to return after the reranker (or after RRF
+        if reranker disabled). Default 8.
     per_channel_limit:
-        Top-N pulled from each individual channel before fusion.
+        Top-N pulled from each channel before fusion. Default 30 — also
+        the size of the candidate pool fed to the reranker.
+    rerank:
+        Toggle for the cross-encoder pass. Default True. Set False for
+        A/B comparisons against the bi-encoder-only baseline (day 14
+        eval).
     rrf_k:
-        Flattening constant for RRF (default 60, see ``rrf.py`` for the
-        rationale).
+        Flattening constant for RRF. Default 60.
     """
+    if rerank and reranker is None:
+        raise ValueError("rerank=True requires a reranker; pass one or set rerank=False.")
+
     t_start = time.perf_counter()
     if not query or not query.strip():
-        return [], HybridSearchTimings(0.0, 0.0, 0.0, 0.0, 0.0)
+        return [], HybridSearchTimings(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-    # Stage 1: encode once. Synchronous in BGE-M3, but we wrap with
-    # ``asyncio.to_thread`` so a slow encode does not block the event
-    # loop (and other channels' Postgres / Qdrant calls can still
-    # progress concurrently if the application has more than one
-    # in-flight request).
+    # ------------------------------------------------------------------
+    # Stage 1 — encode (BGE-M3, dense + sparse in one forward pass)
+    # ------------------------------------------------------------------
     t_encode = time.perf_counter()
-    encoded = await asyncio.to_thread(encoder.encode, [query])
+    with tracer.start_as_current_span("hybrid.encode") as encode_span:
+        encode_span.set_attribute("hybrid.query.len_chars", len(query))
+        encoded = await asyncio.to_thread(encoder.encode, [query])
     encode_s = time.perf_counter() - t_encode
+
     if not encoded.dense or not encoded.sparse:
-        # Should not happen on a normal query, but treat defensively.
-        return [], HybridSearchTimings(encode_s, 0.0, 0.0, 0.0, encode_s)
+        return [], HybridSearchTimings(encode_s, 0.0, 0.0, 0.0, 0.0, encode_s)
     dense_vec = encoded.dense[0]
     sparse_weights = encoded.sparse[0]
 
-    # Stage 2: three channels in parallel. Qdrant client is sync; wrap
-    # with ``to_thread`` so they run concurrently with the BM25 call.
+    # ------------------------------------------------------------------
+    # Stage 2 — three channels in parallel
+    # ------------------------------------------------------------------
     t_channels = time.perf_counter()
-    dense_task = asyncio.to_thread(
-        dense.dense_search, qdrant_client, dense_vec, limit=per_channel_limit
-    )
-    sparse_task = asyncio.to_thread(
-        sparse.sparse_search, qdrant_client, sparse_weights, limit=per_channel_limit
-    )
-    bm25_task = bm25.search(db_session, query, limit=per_channel_limit)
-    dense_hits, sparse_hits, bm25_hits = await asyncio.gather(dense_task, sparse_task, bm25_task)
+    with tracer.start_as_current_span("hybrid.channels") as channels_span:
+        channels_span.set_attribute("hybrid.per_channel_limit", per_channel_limit)
+        dense_task = asyncio.to_thread(
+            dense.dense_search, qdrant_client, dense_vec, limit=per_channel_limit
+        )
+        sparse_task = asyncio.to_thread(
+            sparse.sparse_search, qdrant_client, sparse_weights, limit=per_channel_limit
+        )
+        bm25_task = bm25.search(db_session, query, limit=per_channel_limit)
+        dense_hits, sparse_hits, bm25_hits = await asyncio.gather(
+            dense_task, sparse_task, bm25_task
+        )
+        channels_span.set_attribute("hybrid.dense.hits", len(dense_hits))
+        channels_span.set_attribute("hybrid.sparse.hits", len(sparse_hits))
+        channels_span.set_attribute("hybrid.bm25.hits", len(bm25_hits))
     channels_s = time.perf_counter() - t_channels
 
-    # Stage 3: RRF over the three ranked lists. We type the value as
-    # ``list[Hashable]`` to match the fuser's signature — UUID is
-    # hashable but ``dict`` is invariant in its value type, so an
-    # explicit annotation avoids a mypy variance complaint.
+    # ------------------------------------------------------------------
+    # Stage 3 — RRF fusion. Limit decision: if reranker will run, give
+    # it a wide pool (per_channel_limit). If not, the API contract is
+    # "return top_k", so truncate now.
+    # ------------------------------------------------------------------
     t_fusion = time.perf_counter()
-    channel_results: dict[str, list[Hashable]] = {
-        "dense": [h.chunk_id for h in dense_hits],
-        "sparse": [h.chunk_id for h in sparse_hits],
-        "bm25": [h.chunk_id for h in bm25_hits],
-    }
-    fused = reciprocal_rank_fusion(channel_results, k=rrf_k, limit=top_k)
+    rrf_limit = per_channel_limit if rerank else top_k
+    with tracer.start_as_current_span("hybrid.rrf") as rrf_span:
+        rrf_span.set_attribute("hybrid.rrf.k", rrf_k)
+        rrf_span.set_attribute("hybrid.rrf.limit", rrf_limit)
+        channel_results: dict[str, list[Hashable]] = {
+            "dense": [h.chunk_id for h in dense_hits],
+            "sparse": [h.chunk_id for h in sparse_hits],
+            "bm25": [h.chunk_id for h in bm25_hits],
+        }
+        fused = reciprocal_rank_fusion(channel_results, k=rrf_k, limit=rrf_limit)
+        rrf_span.set_attribute("hybrid.rrf.fused", len(fused))
     fusion_s = time.perf_counter() - t_fusion
 
-    # Stage 4: enrich with Postgres metadata + text. One JOIN, batched
-    # by chunk.id IN (…). Order is reapplied client-side because IN
-    # does not preserve list order.
-    t_enrich = time.perf_counter()
     if not fused:
         total_s = time.perf_counter() - t_start
-        return [], HybridSearchTimings(encode_s, channels_s, fusion_s, 0.0, total_s)
-    hits = await _enrich(db_session, fused)
-    enrich_s = time.perf_counter() - t_enrich
-    total_s = time.perf_counter() - t_start
+        return [], HybridSearchTimings(encode_s, channels_s, fusion_s, 0.0, 0.0, total_s)
 
+    # ------------------------------------------------------------------
+    # Stage 4 — Postgres enrichment. One JOIN for all candidates.
+    # ------------------------------------------------------------------
+    t_enrich = time.perf_counter()
+    with tracer.start_as_current_span("hybrid.enrich") as enrich_span:
+        enrich_span.set_attribute("hybrid.enrich.candidates", len(fused))
+        enriched = await _enrich(db_session, fused)
+    enrich_s = time.perf_counter() - t_enrich
+
+    # ------------------------------------------------------------------
+    # Stage 5 — Reranker. Optional. Reorders ``enriched`` by a
+    # cross-encoder pass and truncates to ``top_k``.
+    # ------------------------------------------------------------------
+    rerank_s = 0.0
+    if rerank and enriched:
+        assert reranker is not None  # narrowed by the upfront check
+        t_rerank = time.perf_counter()
+        with tracer.start_as_current_span("hybrid.rerank") as rerank_span:
+            rerank_span.set_attribute("hybrid.rerank.candidates", len(enriched))
+            rerank_span.set_attribute("hybrid.rerank.top_k", top_k)
+            candidates = [
+                CandidateForRerank(chunk_id=h.chunk_id, text=h.text, rrf_rank=idx)
+                for idx, h in enumerate(enriched)
+            ]
+            reranked = await asyncio.to_thread(reranker.rerank, query, candidates, top_k=top_k)
+        rerank_s = time.perf_counter() - t_rerank
+
+        # Map back: pull the enriched HybridHits matching the reranker's
+        # chosen IDs in the reranker's order, attaching scores + ranks.
+        by_id = {h.chunk_id: h for h in enriched}
+        out: list[HybridHit] = []
+        for rh in reranked:
+            base = by_id.get(rh.chunk_id)
+            if base is None:
+                logger.warning(
+                    "Reranker returned chunk %s not in enriched set — " "shouldn't happen.",
+                    rh.chunk_id,
+                )
+                continue
+            out.append(
+                HybridHit(
+                    chunk_id=base.chunk_id,
+                    work_canonical_id=base.work_canonical_id,
+                    segment_id=base.segment_id,
+                    parent_chunk_id=base.parent_chunk_id,
+                    is_parent=base.is_parent,
+                    text=base.text,
+                    rrf_score=base.rrf_score,
+                    per_channel_rank=base.per_channel_rank,
+                    rerank_score=rh.score,
+                    rrf_rank=rh.rrf_rank,
+                )
+            )
+        hits = out
+    else:
+        hits = enriched[:top_k]
+
+    total_s = time.perf_counter() - t_start
     logger.info(
-        "hybrid_search query=%r dense=%d sparse=%d bm25=%d fused=%d total=%.3fs",
+        "hybrid_search query=%r dense=%d sparse=%d bm25=%d fused=%d rerank=%s "
+        "out=%d total=%.3fs",
         query,
         len(dense_hits),
         len(sparse_hits),
         len(bm25_hits),
+        len(fused),
+        rerank,
         len(hits),
         total_s,
     )
-    return hits, HybridSearchTimings(encode_s, channels_s, fusion_s, enrich_s, total_s)
+    return (
+        hits,
+        HybridSearchTimings(
+            encode_s=encode_s,
+            channels_s=channels_s,
+            fusion_s=fusion_s,
+            enrich_s=enrich_s,
+            rerank_s=rerank_s,
+            total_s=total_s,
+        ),
+    )
 
 
 async def _enrich(
     session: AsyncSession,
     fused: list[FusedHit],
 ) -> list[HybridHit]:
-    """Replace ``FusedHit[UUID]`` with text-bearing :class:`HybridHit`.
+    """Replace ``FusedHit`` with text-bearing :class:`HybridHit`.
 
     A single round-trip pulls every needed field; we sort the rows
     back into RRF order client-side because SQL ``IN (…)`` does not
@@ -237,10 +337,6 @@ async def _enrich(
     for f in fused:
         row = by_id.get(f.doc_id)
         if row is None:
-            # Qdrant has a chunk that Postgres does not. Skip and log —
-            # this is a corpus-consistency bug, but failing the whole
-            # query because of one stale Qdrant point is worse than
-            # silently dropping it.
             logger.warning(
                 "Hybrid hit %s has no Postgres row — Qdrant ahead of DB?",
                 f.doc_id,
@@ -256,20 +352,22 @@ async def _enrich(
                 text=row.text,
                 rrf_score=f.score,
                 per_channel_rank=f.per_channel_rank,
+                rerank_score=None,
+                rrf_rank=None,
             )
         )
     return hits
 
 
-# Re-exported for the API layer's convenience (it can stay un-aware of
-# the rrf module's existence).
 __all__ = [
     "DEFAULT_PER_CHANNEL_LIMIT",
+    "DEFAULT_RERANK",
     "DEFAULT_TOP_K",
     "ChannelHit",
     "EncoderProtocol",
     "HybridHit",
     "HybridSearchTimings",
     "QdrantQueryProtocol",
+    "RerankerCallable",
     "hybrid_search",
 ]
