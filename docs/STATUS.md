@@ -43,7 +43,8 @@
 | rag-day-11 | BM25 via Postgres FTS (`simple` config on `text_ascii_fold`, GIN index, generated column) | ✅ Done | `3627685` |
 | rag-day-12 | Hybrid RRF (dense + sparse + BM25) + `POST /api/retrieve`, 62-96 ms/query on GPU | ✅ Done | `37df139` |
 | docs/concepts | Учебная библиотека: 10 концептов на русском (RAG, FRBR, chunking, BGE-M3, Qdrant, BM25, RRF, Phoenix, eval) | ✅ Done | (this branch) |
-| docs/eval/golden_v0.0 | Synthetic golden set, 30 QA, разблокирует day-14 eval без буддолога | ✅ Done | (this branch) |
+| docs/eval/golden_v0.0 | Synthetic golden set, 30 QA, разблокирует day-14 eval без буддолога | ✅ Done | `e6d024f` |
+| rag-day-13 | BGE-reranker-v2-m3 cross-encoder + Phoenix per-stage spans + `rerank` API flag | ✅ Done | (this branch) |
 | … | (всего 120 дней в плане) | | |
 
 ### App-трек
