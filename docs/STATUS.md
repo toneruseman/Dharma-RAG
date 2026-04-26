@@ -41,7 +41,9 @@
 | rag-day-09 | Phoenix observability + OpenInference | ✅ Done | `c2defe2` |
 | rag-day-10 | Qdrant collection `dharma_v1` + named vectors + full ingest (6478 child chunks, 4:40 min on 1080 Ti) | ✅ Done | `330ff30` |
 | rag-day-11 | BM25 via Postgres FTS (`simple` config on `text_ascii_fold`, GIN index, generated column) | ✅ Done | `3627685` |
-| rag-day-12 | Hybrid RRF (dense + sparse + BM25) + `POST /api/retrieve`, 62-96 ms/query on GPU | ✅ Done | (this branch) |
+| rag-day-12 | Hybrid RRF (dense + sparse + BM25) + `POST /api/retrieve`, 62-96 ms/query on GPU | ✅ Done | `37df139` |
+| docs/concepts | Учебная библиотека: 10 концептов на русском (RAG, FRBR, chunking, BGE-M3, Qdrant, BM25, RRF, Phoenix, eval) | ✅ Done | (this branch) |
+| docs/eval/golden_v0.0 | Synthetic golden set, 30 QA, разблокирует day-14 eval без буддолога | ✅ Done | (this branch) |
 | … | (всего 120 дней в плане) | | |
 
 ### App-трек
@@ -63,7 +65,9 @@
 | ID | Что | Срочность | Кто разблокирует |
 |---|---|---|---|
 | B-001 | Нет буддолога на связи для golden set v0.1 | Высокая (блокирует rag-day-05 и все последующие quality-метрики) | Человек, не код |
-| B-002 | `docs/old/` содержит устаревшие параметры (150/600 слов, Langfuse as primary) | Низкая (ADR-0001 перекрывает) | Docs alignment pass (отдельная задача) |
+| ~~B-002~~ | ~~`docs/old/` содержит устаревшие параметры~~ | ✅ Closed | Удалено в `399bda2` |
+| B-001 (re-scoped) | Buddhologist for golden eval set | Был блокером, **deferred until proof-of-concept ready** | Synthetic v0.0 покрывает iteration; v0.1 authoritative нужна перед public release |
+| B-004 | Re-introduce CI using uv | Перед v0.1.0 release (day 21) | [#20](https://github.com/toneruseman/Dharma-RAG/issues/20) |
 
 ---
 
