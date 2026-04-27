@@ -45,7 +45,8 @@
 | docs/concepts | Учебная библиотека: 10 концептов на русском (RAG, FRBR, chunking, BGE-M3, Qdrant, BM25, RRF, Phoenix, eval) | ✅ Done | (this branch) |
 | docs/eval/golden_v0.0 | Synthetic golden set, 30 QA, разблокирует day-14 eval без буддолога | ✅ Done | `e6d024f` |
 | rag-day-13 | BGE-reranker-v2-m3 cross-encoder + Phoenix per-stage spans + `rerank` API flag | ✅ Done | `d7de5a0` |
-| rag-day-14 | Eval framework + baseline numbers on synthetic golden v0.0 (`docs/EVAL_BASELINE.md`): ref_hit@5 = 0.40 with rerank, MRR 0.244 — **below planned ≥0.60**, gap to be closed by Contextual Retrieval (day 16-17) | ✅ Done | (this branch) |
+| rag-day-14 | Eval framework + baseline numbers on synthetic golden v0.0 (`docs/EVAL_BASELINE.md`): ref_hit@5 = 0.40 with rerank, MRR 0.244 — **below planned ≥0.60**, gap to be closed by Contextual Retrieval (day 16-17) | ✅ Done | `91f0ae2` |
+| rag-day-15 | Contextual Retrieval — prompt template v1 + DI plumbing. `PROMPT_TEMPLATE_V1` validated in-chat against 50 stratified sample chunks (`docs/contextual/validation_output_opus_v1.md`); `src/contextual/contextualizer.py` ships protocol + dataclass + helpers; 22 unit tests. Industrial run + provider choice (Haiku vs cloud.ru) deferred to day 16. | ✅ Done | (this branch) |
 | … | (всего 120 дней в плане) | | |
 
 ### App-трек
