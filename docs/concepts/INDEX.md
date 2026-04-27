@@ -31,12 +31,12 @@
 | [08 — Observability через Phoenix](08-observability-phoenix.md) | день 9 | ✅ |
 | [09 — Eval и golden set](09-eval-and-golden-set.md) | день 14, ongoing | ✅ |
 | [10 — Cross-encoder reranking](10-cross-encoder-reranking.md) | день 13 | ✅ |
+| [11 — Contextual Retrieval](11-contextual-retrieval.md) | дни 15-17 | ✅ (prompt v1) |
 
 ## Что появится позже
 
 | Концепт | План |
 |---|---|
-| 11 — Contextual Retrieval (Anthropic метод) | дни 15-17 |
 | 12 — Parent-document retrieval | день 18 |
 | 13 — LLM generation + prompt caching | дни 22-30 |
 | 14 — Citation verification | день 30+ |
