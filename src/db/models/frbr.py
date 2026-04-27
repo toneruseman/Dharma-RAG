@@ -212,6 +212,17 @@ class Chunk(Base, TimestampMixin):
         nullable=True,
     )
 
+    # Contextual Retrieval (migration 004, rag-day-16). Populated by
+    # ``scripts/contextualize_corpus.py`` for child chunks; remains NULL
+    # for parent chunks and any rows the indexer hasn't visited yet.
+    # ``context_version`` is bumped when the prompt template changes;
+    # ``context_model`` when the LLM provider/model changes. Together
+    # they let future re-context jobs target only the rows that need
+    # regeneration (``WHERE context_version <> 'v2-...'``).
+    context_text: Mapped[str | None] = mapped_column(Text)
+    context_version: Mapped[str | None] = mapped_column(String(64))
+    context_model: Mapped[str | None] = mapped_column(String(128))
+
     __table_args__ = (
         Index("ix_chunk_instance_seq", "instance_id", "sequence"),
         Index("ix_chunk_parent", "parent_chunk_id"),

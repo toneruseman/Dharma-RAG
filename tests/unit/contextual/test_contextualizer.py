@@ -15,7 +15,9 @@ import pytest
 
 from src.contextual.contextualizer import (
     PROMPT_TEMPLATE_V1,
+    PROMPT_TEMPLATE_V2,
     PROMPT_VERSION_V1,
+    PROMPT_VERSION_V2,
     ContextProviderProtocol,
     ContextualizedChunk,
     build_contextualized_chunk,
@@ -52,6 +54,30 @@ def test_prompt_template_is_str() -> None:
     """Sanity: must be a non-empty string with length in a sane range."""
     assert isinstance(PROMPT_TEMPLATE_V1, str)
     assert 200 < len(PROMPT_TEMPLATE_V1) < 2000
+
+
+def test_prompt_template_v2_lists_known_pali_pitfalls() -> None:
+    """v2 was added specifically to fix the MN 118 / Satipaṭṭhāna mix-up
+    seen in the day-16 smoke run. The fix is data, not just instruction:
+    naming the actual sutta titles in the prompt forces the model to
+    look at the exact ID before guessing."""
+    p = PROMPT_TEMPLATE_V2
+    assert "MN 118" in p
+    assert "Anāpānassati" in p
+    assert "Satipaṭṭhāna" in p
+    assert "Dhammacakkappavattana" in p
+
+
+def test_prompt_v2_tells_model_to_omit_when_uncertain() -> None:
+    """The whole reason v2 exists — make the model omit rather than guess."""
+    p = PROMPT_TEMPLATE_V2.lower()
+    assert "omit" in p
+    assert "uncertain" in p or "100% certain" in p
+
+
+def test_prompt_versions_are_distinct_strings() -> None:
+    assert PROMPT_VERSION_V1 != PROMPT_VERSION_V2
+    assert PROMPT_VERSION_V2.startswith("v2-")
 
 
 # ---------------------------------------------------------------------------
