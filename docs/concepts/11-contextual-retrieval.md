@@ -35,17 +35,17 @@ Embedding-модель видит чанк sn56.11 как «текст про д
 
 ```mermaid
 flowchart LR
-    subgraph "Day 16 (industrial run)"
-      A[Postgres: chunks] --> B[For each child + its parent]
-      B --> C[LLM: generate 50-100 token context]
-      C --> D[context + chunk = prefixed_text]
-      D --> E[BGE-M3 encode]
-      E --> F[Qdrant dharma_v2]
+    subgraph Day16 ["Day 16 — industrial run"]
+        A[Postgres chunks] --> B[For each child plus parent]
+        B --> C[LLM generates context]
+        C --> D[context plus chunk]
+        D --> E[BGE-M3 encode]
+        E --> F[Qdrant dharma_v2]
     end
-    subgraph "Day 17 (A/B eval)"
-      F --> G[Run golden v0.0]
-      H[Qdrant dharma_v1<br/>without context] --> G
-      G --> I[ref_hit@5, MRR delta]
+    subgraph Day17 ["Day 17 — A/B eval"]
+        F --> G[Run golden v0.0]
+        H[Qdrant dharma_v1 no context] --> G
+        G --> I["ref_hit@5 and MRR delta"]
     end
 ```
 
