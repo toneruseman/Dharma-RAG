@@ -74,6 +74,46 @@ maintenance can tell which prompt produced which embedding."""
 PROMPT_VERSION_V1: str = "v1-2026-04-27"
 
 
+PROMPT_TEMPLATE_V2: str = """\
+You are an expert on the Pāli Canon (Theravāda Buddhism). For each chunk, \
+write a SHORT context (50-100 tokens) that situates it within its source. \
+The context will be PREPENDED to the chunk before embedding for retrieval, \
+so it should help a search index find this exact passage.
+
+Required content:
+1. **Sutta canonical ID** (e.g. "MN 118", "SN 56.11", "AN 4.41"). REQUIRED.
+2. **Pāli sutta title** — include ONLY when 100% certain. Misnaming a sutta \
+in the embedding poisons retrieval. Common pitfalls to AVOID:
+   - MN 118 = Anāpānassati Sutta. Do NOT call it Satipaṭṭhāna Sutta.
+   - MN 10 = Satipaṭṭhāna Sutta. DN 22 = Mahāsatipaṭṭhāna Sutta.
+   - SN 56.11 = Dhammacakkappavattana Sutta.
+   - SN 22.59 = Anattalakkhaṇa Sutta.
+   When uncertain, OMIT the Pāli title and use only the canonical ID.
+3. Location within the sutta (opening, gradual training, simile of X, etc.).
+4. Main topic, expressed in plain English.
+5. Key Pāli terms preserved verbatim when they appear in the chunk \
+(e.g. "satipaṭṭhāna", "anāpānassati", "paṭiccasamuppāda", "bojjhaṅga").
+
+Style:
+- Single paragraph, plain prose, no markdown.
+- 50-100 tokens (1-3 sentences).
+- DO NOT paraphrase doctrine — describe factually.
+- DO preserve exact sutta IDs and Pāli terms.
+- DO use Sujato-style spelling (not Wisdom Pubs).
+
+Output ONLY the context. No prefix, no headers, no quotation marks.
+"""
+"""Prompt template version 2 — tightened Pāli-title rule after day-16 smoke.
+
+Day-16 smoke (5 chunks via Haiku 3.5) caught ``MN 118`` mis-labelled as
+"Satipaṭṭhāna Sutta" (it is actually *Anāpānassati Sutta*). v2 names the
+common pitfalls explicitly and tells the model to omit Pāli titles when
+not certain — guessing was poisoning ~10% of contexts.
+"""
+
+PROMPT_VERSION_V2: str = "v2-2026-04-27"
+
+
 @dataclass(frozen=True, slots=True)
 class ContextualizedChunk:
     """One chunk with its LLM-generated context attached.
@@ -216,7 +256,9 @@ def build_contextualized_chunk(
 
 __all__ = [
     "PROMPT_TEMPLATE_V1",
+    "PROMPT_TEMPLATE_V2",
     "PROMPT_VERSION_V1",
+    "PROMPT_VERSION_V2",
     "ContextProviderProtocol",
     "ContextualizedChunk",
     "build_contextualized_chunk",
