@@ -24,6 +24,31 @@ from src.eval.golden import (
 # ---------------------------------------------------------------------------
 
 
+def test_extended_golden_yaml_on_disk_parses_and_self_consistent() -> None:
+    """Smoke-test the actual ``golden_v0.0_extended.yaml`` checked into the
+    repo: it must parse, contain exactly 100 items, and the metadata's
+    distribution counts must match the items' actual fields. Catches
+    accidental drift when the file is hand-edited (e.g. adding a new QA
+    without updating ``difficulty_distribution``)."""
+    path = Path("docs/eval/golden_v0.0_extended.yaml")
+    if not path.exists():
+        pytest.skip("extended golden file not present")
+    gs = load_golden_set(path)
+    assert gs.total_items == 100
+    assert gs.authoritative is False
+    assert gs.version == "0.0-synthetic-extended"
+    diffs: dict[str, int] = {}
+    langs: dict[str, int] = {}
+    for item in gs.items:
+        diffs[item.difficulty] = diffs.get(item.difficulty, 0) + 1
+        langs[item.language] = langs.get(item.language, 0) + 1
+    assert diffs == {"easy": 30, "medium": 35, "hard": 35}
+    # languages: en majority, plus small ru / pli probe sets
+    assert langs["en"] == 91
+    assert langs["ru"] == 7
+    assert langs["pli"] == 2
+
+
 _MIN_VALID_YAML = """\
 metadata:
   version: "test-0.0"
