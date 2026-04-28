@@ -59,6 +59,21 @@ class Settings(BaseSettings):
     retrieval_rerank_default: bool = Field(default=False)
     retrieval_expand_parents_default: bool = Field(default=True)
 
+    # --- Pāli glossary expansion (rag-day-23) ---
+    # ``True``: rewrite the user query before encode by appending the
+    # canonical Pāli lemma + its top-1 EN/RU meaning from DPD. Closes
+    # the gap on bare-Pāli ("jhāna") and Russian transliteration
+    # ("джхана") queries against an English-mostly corpus.
+    #
+    # Default flipped to ``True`` after rag-day-23 tuning eval
+    # (``docs/EVAL_PALI_TUNING.md``):
+    #   * targeted golden (50 ru / 30 pli / 20 mixed): ref_hit@5
+    #     0.200 → 0.290 (+9 pp), MRR 0.150 → 0.162.
+    #   * broader v0.0-extended (91 en / 7 ru / 2 pli): parity
+    #     (diacritic-guard correctly skips English queries).
+    # Net: strictly-or-better outcome on both eval sets.
+    glossary_expand_pali_default: bool = Field(default=True)
+
     # --- RAG backend selection (app-day-02) ---
     # ``stub`` returns hardcoded fixture sources in ~1 ms and needs no
     # GPU / Qdrant / Postgres — ideal for frontend dev and CI smoke

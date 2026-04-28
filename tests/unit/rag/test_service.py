@@ -62,12 +62,22 @@ def _make_hit(
 class TestBuildVersionString:
     def test_format(self) -> None:
         assert (
-            _build_version_string(collection="dharma_v2", rerank=False, expand_parents=True)
-            == "dharma_v2-rerank0-parents1"
+            _build_version_string(
+                collection="dharma_v2",
+                rerank=False,
+                expand_parents=True,
+                expand_pali=False,
+            )
+            == "dharma_v2-rerank0-parents1-pali0"
         )
         assert (
-            _build_version_string(collection="dharma_v1", rerank=True, expand_parents=False)
-            == "dharma_v1-rerank1-parents0"
+            _build_version_string(
+                collection="dharma_v1",
+                rerank=True,
+                expand_parents=False,
+                expand_pali=True,
+            )
+            == "dharma_v1-rerank1-parents0-pali1"
         )
 
 
@@ -183,7 +193,8 @@ async def test_query_maps_hits_and_builds_metadata(
     assert response.metadata.collection == "dharma_v2"
     assert response.metadata.rerank is False
     assert response.metadata.expand_parents is True
-    assert response.metadata.version == "dharma_v2-rerank0-parents1"
+    assert response.metadata.expand_pali is False  # default off, no glossary
+    assert response.metadata.version == "dharma_v2-rerank0-parents1-pali0"
     assert response.metadata.n_candidates == 2
     # hybrid_search received the resolved server-side defaults, not None.
     assert captured_kwargs["collection_name"] == "dharma_v2"

@@ -1,0 +1,860 @@
+# Targeted golden eval set v0.0-pali-targeted (100 QA)
+# ============================================================================
+# WARNING: NOT AUTHORITATIVE — pending buddhologist review (B-001).
+# Synthetic, written in-chat 2026-04-28 (rag-day-23) specifically to measure
+# the value of Pāli-glossary expansion. Use ONLY for relative-mode eval of
+# the glossary on/off ablation. Не для абсолютных утверждений о качестве.
+# ============================================================================
+#
+# Зачем отдельный набор:
+# ----------------------
+# Базовый ``golden_v0.0_extended.yaml`` имеет состав 91 EN / 7 RU / 2 pli —
+# на нём польза глоссария (который активируется только на cyrillic + Pāli с
+# диакритиками) теряется в шуме English-большинства. Этот файл целевой:
+# каждый запрос сконструирован так, чтобы либо использовать кириллический
+# термин, либо bare-Pāli с диакритиками — то есть ровно те случаи, где
+# diacritic-guard эвристика разрешает расширение через DPD.
+#
+# Композиция:
+# -----------
+# * 50 RU (cyrillic) — обычный русский запрос с буддийской терминологией
+# * 30 pli — короткий bare-Pāli с диакритиками (1-3 термина, как qa_096/qa_100)
+# * 20 mixed — русское предложение с встроенным Pāli-термином (cyrillic или
+#   diacritic)
+#
+# Все ``expected_works`` сверены с корпусом (MN/SN/AN/DN). Khuddakanikāya
+# (Khp, Snp, Ud, Dhp) в корпусе **отсутствует** — для соответствующих тем
+# используются альтернативные канонические ссылки из других никай.
+#
+# ============================================================================
+
+metadata:
+  version: "0.0-pali-targeted"
+  authoritative: false
+  generated_date: "2026-04-28"
+  generator: "claude-opus-4-7 (curated, in-chat per feedback_validate_prompt_in_chat memory)"
+  total_items: 100
+  purpose: "Measure Pāli-glossary expansion lift on cyrillic + bare-Pāli queries"
+  difficulty_distribution:
+    easy: 30
+    medium: 40
+    hard: 30
+  language_distribution:
+    ru: 50
+    pli: 30
+    mixed: 20
+
+# ----------------------------------------------------------------------------
+
+queries:
+  # ==========================================================================
+  # CYRILLIC RU (50) — qa_001 .. qa_050
+  # ==========================================================================
+
+  - id: "qa_001"
+    query: "Что такое четыре благородные истины?"
+    expected_works: ["sn56.11", "mn141"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "SN 56.11 — первая проповедь, MN 141 — Saccavibhanga, развёрнутый анализ."
+
+  - id: "qa_002"
+    query: "Что такое дуккха в буддизме?"
+    expected_works: ["sn56.11", "mn28"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Канонические определения дуккхи — SN 56.11 + MN 28 (Mahāhatthipadopama)."
+
+  - id: "qa_003"
+    query: "В чём причина страдания согласно Будде?"
+    expected_works: ["sn56.11", "mn141"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Вторая благородная истина — самудая, причина дуккхи."
+
+  - id: "qa_004"
+    query: "Что такое прекращение страдания?"
+    expected_works: ["sn56.11", "mn141"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Третья благородная истина — ниродха."
+
+  - id: "qa_005"
+    query: "Где Будда впервые изложил учение о четырёх истинах?"
+    expected_works: ["sn56.11"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Dhammacakkappavattana — первая проповедь в Исипатане."
+
+  - id: "qa_006"
+    query: "Что такое благородный восьмеричный путь?"
+    expected_works: ["mn117", "sn45.8"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "MN 117 (Mahācattārīsaka) — главное изложение, SN 45.8 — определение факторов."
+
+  - id: "qa_007"
+    query: "Что значит правильное воззрение в буддизме?"
+    expected_works: ["mn117", "mn9"]
+    topic: "path"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "MN 9 (Sammādiṭṭhi) — отдельная сутта о правильном воззрении."
+
+  - id: "qa_008"
+    query: "Что такое правильное усилие?"
+    expected_works: ["mn117"]
+    topic: "path"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Sammāvāyāma в восьмеричном пути."
+
+  - id: "qa_009"
+    query: "Что такое правильное сосредоточение?"
+    expected_works: ["mn117", "an4.41"]
+    topic: "path"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Sammāsamādhi через четыре джханы."
+
+  - id: "qa_010"
+    query: "Чем средний путь отличается от крайностей?"
+    expected_works: ["sn56.11"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Majjhima paṭipadā — открыта в первой проповеди."
+
+  - id: "qa_011"
+    query: "Что такое джхана в практике медитации?"
+    expected_works: ["mn36", "mn4"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "MN 36 и MN 4 — пробуждение Будды через четыре джханы."
+
+  - id: "qa_012"
+    query: "Сколько ступеней джхан описано в каноне?"
+    expected_works: ["an9.36", "dn33"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Девять последовательных достижений в AN 9.36, перечисление в DN 33."
+
+  - id: "qa_013"
+    query: "Как достичь первой джханы?"
+    expected_works: ["mn39", "mn36"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "MN 39 — постепенная тренировка, MN 36 — личный опыт Будды."
+
+  - id: "qa_014"
+    query: "Что такое медитативное погружение?"
+    expected_works: ["mn36", "an9.36"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Перевод термина джхана."
+
+  - id: "qa_015"
+    query: "Чем дхьяна отличается от обычной концентрации?"
+    expected_works: ["mn36"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "hard"
+    rationale: "Дхьяна = санскритская форма джханы; различие в качестве (восторг, блаженство)."
+
+  - id: "qa_016"
+    query: "Что такое осознанность в буддизме?"
+    expected_works: ["mn10", "dn22"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Сатипаттхана-сутты — главные тексты об осознанности."
+
+  - id: "qa_017"
+    query: "Что такое четыре основы внимательности?"
+    expected_works: ["mn10", "dn22"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Cattāro satipaṭṭhānā — тело, чувство, ум, дхамма."
+
+  - id: "qa_018"
+    query: "Как практиковать сатипаттхану?"
+    expected_works: ["mn10", "dn22"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Прямое инструктивное изложение в обеих сатипаттхана-суттах."
+
+  - id: "qa_019"
+    query: "Что такое анапанасати?"
+    expected_works: ["mn118"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "MN 118 — Ānāpānasati Sutta."
+
+  - id: "qa_020"
+    query: "Что такое наблюдение за дыханием в буддийской практике?"
+    expected_works: ["mn118", "mn119"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "MN 118 + Kāyagatāsati MN 119."
+
+  - id: "qa_021"
+    query: "Что такое зависимое возникновение?"
+    expected_works: ["sn12.1", "mn9"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "SN 12.1 — Paṭiccasamuppāda, MN 9 — Sammādiṭṭhi с разбором звеньев."
+
+  - id: "qa_022"
+    query: "Каковы 12 звеньев зависимого возникновения?"
+    expected_works: ["sn12.2"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "SN 12.2 — Vibhaṅga, развёрнутое определение каждого звена."
+
+  - id: "qa_023"
+    query: "Что значит «когда есть это, есть и то»?"
+    expected_works: ["sn12.61", "mn38"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "hard"
+    rationale: "Формула обусловленности — SN 12.61, MN 38 (Mahātaṇhāsaṅkhaya)."
+
+  - id: "qa_024"
+    query: "Как неведение порождает страдание согласно Будде?"
+    expected_works: ["sn12.2", "mn9"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "hard"
+    rationale: "Авиджа — первое звено, корень цепи."
+
+  - id: "qa_025"
+    query: "Что такое пять совокупностей?"
+    expected_works: ["sn22.59", "mn28"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Pañca khandhā — рупа, ведана, саннья, санкхара, виннняна."
+
+  - id: "qa_026"
+    query: "Что такое скандхи в учении Будды?"
+    expected_works: ["sn22.59", "mn109"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Санскритская форма термина кхандха."
+
+  - id: "qa_027"
+    query: "Что такое форма, чувство и восприятие?"
+    expected_works: ["sn22.59", "sn22.79"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Первые три из пяти кхандх."
+
+  - id: "qa_028"
+    query: "Из чего состоит человек согласно Будде?"
+    expected_works: ["sn22.59", "mn109"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Анализ через пять совокупностей."
+
+  - id: "qa_029"
+    query: "Что такое анатта?"
+    expected_works: ["sn22.59"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Anattalakkhaṇa Sutta — определение и аргументы за анатту."
+
+  - id: "qa_030"
+    query: "Есть ли душа в буддизме?"
+    expected_works: ["sn22.59", "mn22"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "MN 22 (Alagaddūpama) с критикой воззрения о вечном «я»."
+
+  - id: "qa_031"
+    query: "Почему Будда отрицает существование «я»?"
+    expected_works: ["sn22.59", "mn22"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "hard"
+    rationale: "Аргументация анатты через непостоянство и страдание."
+
+  - id: "qa_032"
+    query: "Что такое карма в буддизме?"
+    expected_works: ["mn135", "an3.34"]
+    topic: "kamma"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "MN 135 (Cūḷakammavibhanga) и AN 3.34 о камме."
+
+  - id: "qa_033"
+    query: "Почему люди рождаются разными?"
+    expected_works: ["mn135"]
+    topic: "kamma"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "MN 135 — короткий разбор камма-вибханги."
+
+  - id: "qa_034"
+    query: "Что такое камма и её плоды?"
+    expected_works: ["mn136", "an4.232"]
+    topic: "kamma"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "MN 136 (Mahākammavibhanga), AN 4.232 — плоды камма."
+
+  - id: "qa_035"
+    query: "Как карма работает после смерти?"
+    expected_works: ["mn136", "mn143"]
+    topic: "kamma"
+    language: "ru"
+    difficulty: "hard"
+    rationale: "MN 136 + смерть Анатхапиндики MN 143."
+
+  - id: "qa_036"
+    query: "Что такое ниббана?"
+    expected_works: ["an9.34", "mn26"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "AN 9.34 — Nibbāna Sutta, MN 26 — поиск Будды."
+
+  - id: "qa_037"
+    query: "Что такое нирвана?"
+    expected_works: ["an9.34", "mn26"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Санскритская форма ниббаны."
+
+  - id: "qa_038"
+    query: "Что значит угасание в буддийском смысле?"
+    expected_works: ["an9.34", "mn26"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Ниббана этимологически = угасание (огня)."
+
+  - id: "qa_039"
+    query: "Что такое метта и как её развивать?"
+    expected_works: ["an11.16", "mn7"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "AN 11.16 (Mettānisaṃsa) — польза практики метты, MN 7 (Vatthūpama)."
+
+  - id: "qa_040"
+    query: "Что такое сострадание в буддизме?"
+    expected_works: ["mn7", "dn13"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Karuṇā как часть брахмавихар."
+
+  - id: "qa_041"
+    query: "Что такое любящая доброта?"
+    expected_works: ["an11.16", "an4.125"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Mettā в практике, AN 4.125 (Mettā Sutta), AN 11.16."
+
+  - id: "qa_042"
+    query: "Каковы четыре безмерных состояния?"
+    expected_works: ["mn7", "dn13"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Brahmavihāra: метта, каруна, мудита, упеккха."
+
+  - id: "qa_043"
+    query: "Что такое равностность в практике?"
+    expected_works: ["mn7", "an4.125"]
+    topic: "meditation"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Upekkhā как четвёртая брахмавихара."
+
+  - id: "qa_044"
+    query: "Что такое непостоянство в буддизме?"
+    expected_works: ["sn22.59", "an7.62"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Anicca — первая характеристика бытия."
+
+  - id: "qa_045"
+    query: "Что такое аничча?"
+    expected_works: ["sn22.59"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "Anicca — палийский термин для непостоянства."
+
+  - id: "qa_046"
+    query: "Почему всё непостоянно согласно Будде?"
+    expected_works: ["sn22.59", "sn22.79"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "SN 22.79 (Khajjanīya) — анализ непостоянства совокупностей."
+
+  - id: "qa_047"
+    query: "Что такое сангха?"
+    expected_works: ["dn16", "an4.34"]
+    topic: "monastic"
+    language: "ru"
+    difficulty: "easy"
+    rationale: "DN 16 (Mahāparinibbāna) о сангхе, AN 4.34."
+
+  - id: "qa_048"
+    query: "Что говорил Будда о смерти?"
+    expected_works: ["mn143", "sn3.22"]
+    topic: "doctrine"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "MN 143 — наставление умирающему, SN 3.22 — бабушка царя."
+
+  - id: "qa_049"
+    query: "Что такое перерождение в буддизме?"
+    expected_works: ["mn135", "mn136"]
+    topic: "kamma"
+    language: "ru"
+    difficulty: "medium"
+    rationale: "Камма-вибханги объясняют механизм перерождения."
+
+  - id: "qa_050"
+    query: "Чем тхеравада отличается от других школ буддизма?"
+    expected_works: ["dn16"]
+    topic: "tradition"
+    language: "ru"
+    difficulty: "hard"
+    rationale: "Главные положения сохранены в Палийском каноне; DN 16 — последние наставления."
+
+  # ==========================================================================
+  # BARE PĀLI WITH DIACRITICS (30) — qa_051 .. qa_080
+  # ==========================================================================
+
+  - id: "qa_051"
+    query: "cattāri ariyasaccāni"
+    expected_works: ["sn56.11", "mn141"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Четыре благородные истины на pāli."
+
+  - id: "qa_052"
+    query: "dukkha samudaya nirodha magga"
+    expected_works: ["sn56.11", "mn141"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Четыре истины как формула."
+
+  - id: "qa_053"
+    query: "paṭiccasamuppāda"
+    expected_works: ["sn12.1", "sn12.2"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Зависимое возникновение."
+
+  - id: "qa_054"
+    query: "paṭiccasamuppāda anuloma paṭiloma"
+    expected_works: ["sn12.1"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "hard"
+    rationale: "Прямое и обратное возникновение цепи."
+
+  - id: "qa_055"
+    query: "anicca dukkha anatta tilakkhaṇa"
+    expected_works: ["sn22.59", "sn22.79"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Три характеристики существования."
+
+  - id: "qa_056"
+    query: "anattalakkhaṇa sutta"
+    expected_works: ["sn22.59"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Прямая отсылка к названию SN 22.59."
+
+  - id: "qa_057"
+    query: "ariyo aṭṭhaṅgiko maggo"
+    expected_works: ["mn117", "sn45.8"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Благородный восьмеричный путь."
+
+  - id: "qa_058"
+    query: "ānāpānasati"
+    expected_works: ["mn118"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "MN 118 — Ānāpānasati Sutta."
+
+  - id: "qa_059"
+    query: "satipaṭṭhāna kāye"
+    expected_works: ["mn10", "dn22"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Первая основа внимательности — наблюдение за телом."
+
+  - id: "qa_060"
+    query: "cattāro satipaṭṭhānā"
+    expected_works: ["mn10", "dn22"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Четыре основы внимательности."
+
+  - id: "qa_061"
+    query: "paṭhamajjhāna pīti sukha"
+    expected_works: ["mn36", "an9.36"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "hard"
+    rationale: "Первая джхана с факторами восторга и блаженства."
+
+  - id: "qa_062"
+    query: "samādhi appanā upacāra"
+    expected_works: ["mn36"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "hard"
+    rationale: "Концентрация полная и подходящая (в большей степени комментаторский термин, но описано в MN 36)."
+
+  - id: "qa_063"
+    query: "kāyagatāsati"
+    expected_works: ["mn119"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "MN 119 — Kāyagatāsati Sutta."
+
+  - id: "qa_064"
+    query: "samathayānika vipassanāyānika"
+    expected_works: ["an4.170"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "hard"
+    rationale: "AN 4.170 — две разновидности практикующих."
+
+  - id: "qa_065"
+    query: "pañca khandhā"
+    expected_works: ["sn22.59", "mn28"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Пять совокупностей."
+
+  - id: "qa_066"
+    query: "rūpa vedanā saññā saṅkhāra viññāṇa"
+    expected_works: ["sn22.59"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Перечисление пяти кхандх."
+
+  - id: "qa_067"
+    query: "saḷāyatana phassa"
+    expected_works: ["sn35.23"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Шесть сфер чувств и контакт."
+
+  - id: "qa_068"
+    query: "mettā karuṇā muditā upekkhā"
+    expected_works: ["mn7", "dn13"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Четыре брахмавихары."
+
+  - id: "qa_069"
+    query: "brahmavihāra bhāvanā"
+    expected_works: ["mn7", "dn13"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Развитие безмерных."
+
+  - id: "qa_070"
+    query: "mettābhāvanā"
+    expected_works: ["an11.16", "an4.125"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Развитие любящей доброты."
+
+  - id: "qa_071"
+    query: "tisaraṇa buddha dhamma saṅgha"
+    expected_works: ["an4.34", "an11.12"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Тройное прибежище — Будда, Дхамма, Сангха."
+
+  - id: "qa_072"
+    query: "pañca nīvaraṇāni"
+    expected_works: ["sn46.55"]
+    topic: "meditation"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Пять помех."
+
+  - id: "qa_073"
+    query: "saṃyojana orambhāgiya"
+    expected_works: ["an10.13"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "hard"
+    rationale: "Низшие оковы (5 из 10)."
+
+  - id: "qa_074"
+    query: "sotāpanna sakadāgāmī anāgāmī arahatta"
+    expected_works: ["sn55.5", "an10.13"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Четыре стадии благородной личности."
+
+  - id: "qa_075"
+    query: "arahatta phala"
+    expected_works: ["mn29", "mn30"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Плод архатства."
+
+  - id: "qa_076"
+    query: "ariya puggala"
+    expected_works: ["an8.59"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Благородные личности."
+
+  - id: "qa_077"
+    query: "sīla samādhi paññā"
+    expected_works: ["dn16", "an3.85"]
+    topic: "path"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Тройная тренировка."
+
+  - id: "qa_078"
+    query: "kamma vipāka"
+    expected_works: ["mn136", "an4.232"]
+    topic: "kamma"
+    language: "pli"
+    difficulty: "easy"
+    rationale: "Камма и её плоды."
+
+  - id: "qa_079"
+    query: "saṃsāra anamatagga"
+    expected_works: ["sn15.1", "sn15.3"]
+    topic: "doctrine"
+    language: "pli"
+    difficulty: "medium"
+    rationale: "Сансара без видимого начала, SN 15."
+
+  - id: "qa_080"
+    query: "tathāgata bhagavā arahaṃ sammāsambuddho"
+    expected_works: ["mn26"]
+    topic: "buddha"
+    language: "pli"
+    difficulty: "hard"
+    rationale: "Эпитеты Будды."
+
+  # ==========================================================================
+  # MIXED — RU sentence + Pāli term (cyrillic or diacritic) (20) — qa_081 .. qa_100
+  # ==========================================================================
+
+  - id: "qa_081"
+    query: "Что такое paṭiccasamuppāda в буддийской философии?"
+    expected_works: ["sn12.1", "mn9"]
+    topic: "doctrine"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Pāli термин в русском вопросе — ключевой кейс для глоссария."
+
+  - id: "qa_082"
+    query: "Чем jhāna отличается от обычной концентрации?"
+    expected_works: ["mn36"]
+    topic: "meditation"
+    language: "mixed"
+    difficulty: "hard"
+    rationale: "Diacritic Pāli в RU вопросе — должно расширяться."
+
+  - id: "qa_083"
+    query: "Как практиковать ānāpānasati?"
+    expected_works: ["mn118"]
+    topic: "meditation"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Pāli с диакритиками в RU."
+
+  - id: "qa_084"
+    query: "Что значит термин anatta в учении Будды?"
+    expected_works: ["sn22.59", "mn22"]
+    topic: "doctrine"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "ASCII-Pāli (anatta без диакритик) — НЕ должен расширяться согласно diacritic-guard. Контрольный кейс."
+
+  - id: "qa_085"
+    query: "Что такое sati и зачем её развивать?"
+    expected_works: ["mn10", "dn22"]
+    topic: "meditation"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "ASCII-Pāli — контрольный (encoder должен сам понять)."
+
+  - id: "qa_086"
+    query: "В каких суттах говорится о nibbāna?"
+    expected_works: ["an9.34", "mn26"]
+    topic: "doctrine"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Diacritic Pāli — расширение должно сработать."
+
+  - id: "qa_087"
+    query: "Чем dukkha отличается от обычной боли?"
+    expected_works: ["sn56.11", "sn36.6"]
+    topic: "doctrine"
+    language: "mixed"
+    difficulty: "hard"
+    rationale: "ASCII Pāli (dukkha) — контрольный."
+
+  - id: "qa_088"
+    query: "Что значит kamma и каковы её последствия?"
+    expected_works: ["mn136", "an4.232"]
+    topic: "kamma"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "ASCII Pāli — контрольный."
+
+  - id: "qa_089"
+    query: "Что такое sīla в восьмеричном пути?"
+    expected_works: ["mn117", "an3.85"]
+    topic: "path"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Diacritic Pāli (sīla) — расширение должно сработать."
+
+  - id: "qa_090"
+    query: "Расскажи про самадхи в восьмеричном пути"
+    expected_works: ["mn117", "an4.41"]
+    topic: "path"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Cyrillic Pāli (самадхи) → cyrillic-слой → расширение."
+
+  - id: "qa_091"
+    query: "Что значит дхамма с большой буквы?"
+    expected_works: ["mn22", "sn22.87"]
+    topic: "doctrine"
+    language: "mixed"
+    difficulty: "hard"
+    rationale: "Cyrillic Pāli (дхамма) — расширение."
+
+  - id: "qa_092"
+    query: "В чём смысл випассаны как практики?"
+    expected_works: ["mn10", "dn22"]
+    topic: "meditation"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Cyrillic Pāli (випассана) — расширение."
+
+  - id: "qa_093"
+    query: "Что такое архат в буддийской традиции?"
+    expected_works: ["mn29", "mn30"]
+    topic: "doctrine"
+    language: "mixed"
+    difficulty: "easy"
+    rationale: "Cyrillic Pāli (архат) — расширение."
+
+  - id: "qa_094"
+    query: "Чему учит сутта о сансаре?"
+    expected_works: ["sn15.1", "sn15.3"]
+    topic: "doctrine"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Cyrillic Pāli (сансара) — расширение."
+
+  - id: "qa_095"
+    query: "Как достичь ниббаны согласно Будде?"
+    expected_works: ["mn26", "an9.34"]
+    topic: "doctrine"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Cyrillic Pāli (ниббана) — расширение."
+
+  - id: "qa_096"
+    query: "Что такое каммическое возмездие?"
+    expected_works: ["mn136"]
+    topic: "kamma"
+    language: "mixed"
+    difficulty: "hard"
+    rationale: "Cyrillic Pāli (каммическое — производное от камма)."
+
+  - id: "qa_097"
+    query: "Чем брахмавихара отличается от джханы?"
+    expected_works: ["mn7", "mn36"]
+    topic: "meditation"
+    language: "mixed"
+    difficulty: "hard"
+    rationale: "Cyrillic Pāli (брахмавихара, джхана) — расширение обоих."
+
+  - id: "qa_098"
+    query: "Расскажи про випассана-практику в традиции тхеравады"
+    expected_works: ["mn10", "dn22"]
+    topic: "meditation"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Cyrillic Pāli (випассана, тхеравада) — расширение."
+
+  - id: "qa_099"
+    query: "Что значит patiсcasamuppāda anuloma в зависимом возникновении?"
+    expected_works: ["sn12.1"]
+    topic: "doctrine"
+    language: "mixed"
+    difficulty: "hard"
+    rationale: "Diacritic Pāli фраза в RU вопросе."
+
+  - id: "qa_100"
+    query: "Каков порядок sīla, samādhi, paññā в тренировке?"
+    expected_works: ["dn16", "an3.85"]
+    topic: "path"
+    language: "mixed"
+    difficulty: "medium"
+    rationale: "Diacritic Pāli трио — все три должны расшириться."

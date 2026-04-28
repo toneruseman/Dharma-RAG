@@ -32,6 +32,19 @@ class TestQueryRequest:
         req = QueryRequest(query="x", forbidden_works=["mn10", "sn22.59"])
         assert req.forbidden_works == ["mn10", "sn22.59"]
 
+    def test_expand_pali_default_none(self) -> None:
+        # ``None`` is intentional — defers to server-side default.
+        # ``False`` would force-disable on every request, removing the
+        # operator's ability to flip the default by env var.
+        req = QueryRequest(query="x")
+        assert req.expand_pali is None
+
+    def test_expand_pali_explicit_override(self) -> None:
+        req = QueryRequest(query="x", expand_pali=True)
+        assert req.expand_pali is True
+        req2 = QueryRequest(query="x", expand_pali=False)
+        assert req2.expand_pali is False
+
 
 class TestSource:
     def test_score_clamped_to_unit_interval(self) -> None:
@@ -56,14 +69,16 @@ class TestSource:
 class TestPipelineMetadata:
     def test_required_fields(self) -> None:
         meta = PipelineMetadata(
-            version="dharma_v2-rerank0-parents1",
+            version="dharma_v2-rerank0-parents1-pali0",
             collection="dharma_v2",
             rerank=False,
             expand_parents=True,
+            expand_pali=False,
             n_candidates=8,
         )
-        assert meta.version == "dharma_v2-rerank0-parents1"
+        assert meta.version == "dharma_v2-rerank0-parents1-pali0"
         assert meta.n_candidates == 8
+        assert meta.expand_pali is False
 
 
 class TestQueryResponse:
@@ -81,10 +96,11 @@ class TestQueryResponse:
             ],
             latency_ms=42.0,
             metadata=PipelineMetadata(
-                version="dharma_v2-rerank0-parents1",
+                version="dharma_v2-rerank0-parents1-pali0",
                 collection="dharma_v2",
                 rerank=False,
                 expand_parents=True,
+                expand_pali=False,
                 n_candidates=1,
             ),
         )

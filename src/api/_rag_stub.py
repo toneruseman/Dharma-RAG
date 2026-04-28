@@ -92,6 +92,7 @@ class StubRAGService(RAGServiceProtocol):
                 collection="stub",
                 rerank=False,
                 expand_parents=False,
+                expand_pali=False,
                 n_candidates=len(_FIXTURE_SOURCES),
             ),
         )

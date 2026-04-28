@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.eval.golden import GoldenItem, GoldenSet
 from src.eval.metrics import mean_reciprocal_rank, reciprocal_rank, ref_hit_at_k
+from src.processing.glossary import Glossary
 from src.retrieval.hybrid import (
     EncoderProtocol,
     HybridHit,
@@ -112,6 +113,8 @@ async def run_eval(
     top_k: int = DEFAULT_EVAL_TOP_K,
     collection_name: str | None = None,
     expand_parents: bool | None = None,
+    glossary: Glossary | None = None,
+    glossary_max_meanings: int = 1,
 ) -> list[PerQueryResult]:
     """Run ``hybrid_search`` over every item in ``golden`` and collect results.
 
@@ -135,6 +138,18 @@ async def run_eval(
         ``hybrid_search`` default (currently True after the day-18
         cutover). Pass ``False`` to evaluate child-only retrieval and
         measure the contribution of small-to-big expansion.
+    glossary:
+        Day-23 ablation knob. When provided, each item's query is
+        rewritten via :meth:`Glossary.expand_query` *before* being
+        encoded — same code path the production ``RAGService`` uses
+        when ``expand_pali=True``. ``None`` (default) means no
+        rewrite, eval mirrors the no-glossary baseline.
+    glossary_max_meanings:
+        Day-23 tuning knob — forwarded to ``expand_query``. ``2``
+        matches the production default. ``1`` limits noise from
+        long synonym chains; ``0`` adds only the canonical Pāli
+        lemma without any EN/RU translation. Ignored when
+        ``glossary`` is None.
     """
     results: list[PerQueryResult] = []
     # Forward only the kwargs the caller cared to override — keeps the
@@ -146,8 +161,13 @@ async def run_eval(
         extra["expand_parents"] = expand_parents
     for idx, item in enumerate(golden.items, start=1):
         t0 = time.perf_counter()
+        query_text = (
+            glossary.expand_query(item.query, max_meanings=glossary_max_meanings)
+            if glossary is not None
+            else item.query
+        )
         hits, timings = await hybrid_search(
-            query=item.query,
+            query=query_text,
             encoder=encoder,
             qdrant_client=qdrant_client,
             db_session=db_session,
