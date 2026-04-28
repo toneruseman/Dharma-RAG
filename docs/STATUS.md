@@ -6,7 +6,7 @@
 > **Source of truth:** git log + этот файл. Чаты не являются source of truth.
 
 - **Версия:** 2026-04-28
-- **Активная ветка:** `feat/rag-day-22-ablation` (app-day-01 merged into `dev`)
+- **Активная ветка:** `feat/app-day-02-stub-rag` (rag-day-22 + app-day-01 уже в `dev`)
 - **Последний релиз:** `v0.1.0` — Phase 1 Foundation (2026-04-28)
 - **Следующий milestone:** v0.2.0 (Phase 2 — Quality Loop, ablation/glossary/FT)
 - **MVP-ready:** ✅ Готов показать буддологу для разблокировки B-001 (golden v0.1)
@@ -61,8 +61,8 @@
 
 | Day | Задача | Статус | Коммит |
 |---|---|---|---|
-| app-day-01 | pnpm monorepo + `web/` Next.js 16 (Turbopack) + Tailwind 4 + shadcn/ui (`base-nova` style, `neutral` palette). Root `package.json` with `dev:web` / `dev:api` / `dev` (concurrently). `web/` runs on `:3001`, FastAPI stays on `:8000`. `next.config.ts` pins Turbopack workspace root to repo. `.gitignore` covers node_modules / .next / .pnpm-store. | ✅ Done | (this branch) |
-| app-day-02 | `src/rag/schemas.py` zafiksирован (rag-day-19) + `StubRAGService` для dev | 📋 Planned | — |
+| app-day-01 | pnpm monorepo + `web/` Next.js 16 (Turbopack) + Tailwind 4 + shadcn/ui (`base-nova` style, `neutral` palette). Root `package.json` with `dev:web` / `dev:api` / `dev` (concurrently). `web/` runs on `:3001`, FastAPI stays on `:8000`. `next.config.ts` pins Turbopack workspace root to repo. `.gitignore` covers node_modules / .next / .pnpm-store. | ✅ Done | `bd2b1bf` |
+| app-day-02 | Mock RAG-сервис + factory. Новый `RAGServiceProtocol`, `StubRAGService` (3 фиксированных source'а, ~1 ms, без Qdrant/Postgres/GPU), `get_rag_service()` factory, env `RAG_BACKEND=stub\|real` (default **`stub`** — fresh clone сразу работает). В stub-режиме `/api/retrieve` не монтируется (нет смысла без real data); `/api/query` отдаёт фиктивные source'ы с тем же контрактом что в проде. `pnpm dev:api` теперь не требует docker-compose. 298 unit tests green (+12 новых). | ✅ Done | (this branch) |
 | app-day-03 | OpenAPI → TypeScript типы для фронта | 📋 Planned | — |
 | app-day-04 | Next.js layout + темы + дизайн-токены | 📋 Planned | — |
 | app-day-05 | Docker Compose dev-friendly (web + api + services) | 📋 Planned | — |
