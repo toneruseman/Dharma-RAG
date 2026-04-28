@@ -111,6 +111,7 @@ async def run_eval(
     rerank: bool,
     top_k: int = DEFAULT_EVAL_TOP_K,
     collection_name: str | None = None,
+    expand_parents: bool | None = None,
 ) -> list[PerQueryResult]:
     """Run ``hybrid_search`` over every item in ``golden`` and collect results.
 
@@ -128,33 +129,33 @@ async def run_eval(
         Forwarded to ``hybrid_search``. Default 20.
     collection_name:
         Qdrant collection. ``None`` (default) uses ``hybrid_search``'s own
-        default (``dharma_v1``). Day-17 A/B passes ``"dharma_v2"`` here
-        to evaluate the contextualized embeddings.
+        default. Day-17 A/B passes ``"dharma_v2"``.
+    expand_parents:
+        Day-22 ablation knob. ``None`` (default) inherits the
+        ``hybrid_search`` default (currently True after the day-18
+        cutover). Pass ``False`` to evaluate child-only retrieval and
+        measure the contribution of small-to-big expansion.
     """
     results: list[PerQueryResult] = []
+    # Forward only the kwargs the caller cared to override — keeps the
+    # call site honest about which knobs are exercised in this run.
+    extra: dict[str, object] = {}
+    if collection_name is not None:
+        extra["collection_name"] = collection_name
+    if expand_parents is not None:
+        extra["expand_parents"] = expand_parents
     for idx, item in enumerate(golden.items, start=1):
         t0 = time.perf_counter()
-        if collection_name is None:
-            hits, timings = await hybrid_search(
-                query=item.query,
-                encoder=encoder,
-                qdrant_client=qdrant_client,
-                db_session=db_session,
-                reranker=reranker,
-                top_k=top_k,
-                rerank=rerank,
-            )
-        else:
-            hits, timings = await hybrid_search(
-                query=item.query,
-                encoder=encoder,
-                qdrant_client=qdrant_client,
-                db_session=db_session,
-                reranker=reranker,
-                top_k=top_k,
-                rerank=rerank,
-                collection_name=collection_name,
-            )
+        hits, timings = await hybrid_search(
+            query=item.query,
+            encoder=encoder,
+            qdrant_client=qdrant_client,
+            db_session=db_session,
+            reranker=reranker,
+            top_k=top_k,
+            rerank=rerank,
+            **extra,  # type: ignore[arg-type]
+        )
         elapsed = time.perf_counter() - t0
         retrieved_works = tuple(h.work_canonical_id for h in hits)
         results.append(
