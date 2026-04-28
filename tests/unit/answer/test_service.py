@@ -16,7 +16,9 @@ from src.answer.service import (
     AnswerService,
     _build_user_message,
     _extract_citations,
+    build_system_prompt,
 )
+from src.config import Settings
 from src.rag.schemas import (
     PipelineMetadata,
     QueryRequest,
@@ -273,6 +275,63 @@ async def test_answer_skips_llm_when_no_sources() -> None:
     assert response.metadata.llm_tokens_out == 0
     # LLM was not called.
     assert llm.calls == []
+
+
+@pytest.mark.asyncio
+async def test_answer_uses_default_style_when_request_has_none() -> None:
+    """When request.style is None, server default applies. Default
+    setting is ``auto`` — confirms the prompt selection picks up the
+    auto guidance string."""
+    rag = _StubRAG(sources=[_make_source()])
+    llm = _StubLLM()
+    service = AnswerService(
+        rag_service=rag,  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=Settings(answer_default_style="auto"),
+    )
+
+    response = await service.answer(AnswerRequest(query="x"))
+    assert response.metadata.style == "auto"
+    # System prompt the LLM saw must match the auto style.
+    sent_prompt = llm.calls[0]["system_prompt"]
+    assert sent_prompt == build_system_prompt("auto")
+
+
+@pytest.mark.asyncio
+async def test_answer_request_style_overrides_server_default() -> None:
+    """Per-request style wins over the server-side setting."""
+    rag = _StubRAG(sources=[_make_source()])
+    llm = _StubLLM()
+    service = AnswerService(
+        rag_service=rag,  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=Settings(answer_default_style="auto"),
+    )
+
+    response = await service.answer(AnswerRequest(query="x", style="detailed"))
+    assert response.metadata.style == "detailed"
+    sent_prompt = llm.calls[0]["system_prompt"]
+    assert sent_prompt == build_system_prompt("detailed")
+    # Sanity: the detailed prompt actually differs from auto/concise.
+    assert sent_prompt != build_system_prompt("auto")
+    assert sent_prompt != build_system_prompt("concise")
+
+
+@pytest.mark.asyncio
+async def test_answer_server_concise_default_no_request_override() -> None:
+    """Operator can flip the global default to 'concise' via env;
+    requests that don't specify style should pick it up."""
+    rag = _StubRAG(sources=[_make_source()])
+    llm = _StubLLM()
+    service = AnswerService(
+        rag_service=rag,  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=Settings(answer_default_style="concise"),
+    )
+
+    response = await service.answer(AnswerRequest(query="x"))
+    assert response.metadata.style == "concise"
+    assert llm.calls[0]["system_prompt"] == build_system_prompt("concise")
 
 
 @pytest.mark.asyncio

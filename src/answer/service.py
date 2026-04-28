@@ -14,27 +14,69 @@ import re
 import time
 
 from src.answer.llm import AsyncOpenRouterLLM
-from src.answer.schemas import AnswerMetadata, AnswerRequest, AnswerResponse
+from src.answer.schemas import (
+    AnswerMetadata,
+    AnswerRequest,
+    AnswerResponse,
+    AnswerStyle,
+)
+from src.config import Settings, get_settings
 from src.rag.protocol import RAGServiceProtocol
 from src.rag.schemas import QueryRequest, Source
 
 logger = logging.getLogger(__name__)
 
 
-SYSTEM_PROMPT: str = """\
+# Shared rules across all styles. The only thing that changes per
+# style is the trailing length-guidance bullet. Keeping the bulk
+# shared means style-specific changes are a one-line diff.
+_BASE_SYSTEM_PROMPT: str = """\
 You are a knowledgeable assistant on the Pāli Canon (early Buddhist scripture in the Theravāda tradition).
 
 You answer using ONLY the source passages provided in the user message. Do not draw on outside knowledge, do not speculate.
 
 Rules:
 - Answer in the language of the user's question. Russian question → Russian answer; English question → English answer.
-- Cite sources inline using the format [work_id], e.g. "as the Buddha teaches [mn36]" or "found in [sn56.11]". The work_id is shown above each source passage.
+- Cite sources inline using the format [work_id], e.g. "as the Buddha teaches [mn36]" or "found in [sn56.11]". The work_id is shown above each source passage. Multiple works in one bracket are fine: [mn39, dn10].
 - When multiple sources are relevant, cite them all.
 - If the sources do not contain enough information to answer the question, say so honestly. Do not fabricate. Examples of acceptable fallback: "The provided passages do not directly address X." / "На основе предоставленных источников нельзя ответить на этот вопрос."
 - Preserve canonical Pāli terms with their diacritics on first mention (jhāna, paṭiccasamuppāda, dukkha, sati). After first mention you may use a transliteration (jhana) or translation in the answer's target language.
-- Stay within the Theravāda tradition reflected in the Pāli Canon. Do not introduce Mahāyāna or Vajrayāna concepts unless a source passage explicitly discusses them.
-- Be concise. A focused 2-4 sentence answer with citations beats a long paraphrase.
-"""
+- Stay within the Theravāda tradition reflected in the Pāli Canon. Do not introduce Mahāyāna or Vajrayāna concepts unless a source passage explicitly discusses them."""
+
+
+_STYLE_GUIDANCE: dict[AnswerStyle, str] = {
+    "auto": (
+        "Match length to question complexity. A simple factual question "
+        '("когда жил Будда?") deserves 1-2 sentences with citations. A '
+        'fundamental "what is X?" question that the sources address in '
+        "depth deserves a structured multi-paragraph explanation drawing "
+        "on all relevant passages. Don't pad, don't artificially compress."
+    ),
+    "concise": (
+        "Be concise. A focused 2-4 sentence answer with citations beats a " "long paraphrase."
+    ),
+    "detailed": (
+        "Provide a thorough, structured answer drawing on all relevant "
+        "source passages. Use multiple paragraphs or numbered points where "
+        "appropriate. Every claim must carry a citation."
+    ),
+}
+
+
+def build_system_prompt(style: AnswerStyle) -> str:
+    """Compose the full system prompt for the requested style.
+
+    The ``base + per-style suffix`` split keeps the bulk of the prompt
+    immutable so style tweaks don't risk breaking unrelated behaviour
+    (citation format, language matching, Theravāda-only).
+    """
+    return _BASE_SYSTEM_PROMPT + "\n- " + _STYLE_GUIDANCE[style]
+
+
+# Kept for backwards-compat with code that imports the module-level
+# constant. Equivalent to ``build_system_prompt("auto")`` post day-24
+# follow-up; pre-follow-up this was the one-and-only ("concise") prompt.
+SYSTEM_PROMPT: str = build_system_prompt("auto")
 
 
 # Match the **contents** of any bracket pair, then split on commas.
@@ -119,15 +161,20 @@ class AnswerService:
         *,
         rag_service: RAGServiceProtocol,
         llm: AsyncOpenRouterLLM,
-        system_prompt: str = SYSTEM_PROMPT,
+        settings: Settings | None = None,
     ) -> None:
         self._rag = rag_service
         self._llm = llm
-        self._system_prompt = system_prompt
+        self._settings = settings or get_settings()
 
     async def answer(self, request: AnswerRequest) -> AnswerResponse:
         """Run retrieval + LLM and return the synthesised answer."""
         wall_start = time.perf_counter()
+
+        # Effective style: request override wins, else server default.
+        effective_style: AnswerStyle = (
+            request.style if request.style is not None else self._settings.answer_default_style
+        )
 
         retrieval_request = QueryRequest(
             query=request.query,
@@ -152,7 +199,7 @@ class AnswerService:
             user_message = _build_user_message(request.query, list(sources))
             llm_start = time.perf_counter()
             llm_result = await self._llm.complete(
-                system_prompt=self._system_prompt,
+                system_prompt=build_system_prompt(effective_style),
                 user_message=user_message,
                 model=request.model,
             )
@@ -179,9 +226,10 @@ class AnswerService:
                 llm_model=llm_model,
                 llm_tokens_in=tokens_in,
                 llm_tokens_out=tokens_out,
+                style=effective_style,
                 retrieval_metadata=rag_response.metadata,
             ),
         )
 
 
-__all__ = ["AnswerService", "SYSTEM_PROMPT"]
+__all__ = ["AnswerService", "SYSTEM_PROMPT", "build_system_prompt"]

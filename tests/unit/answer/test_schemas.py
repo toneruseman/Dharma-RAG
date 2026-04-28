@@ -37,11 +37,24 @@ class TestAnswerRequest:
             expand_pali=False,
             forbidden_works=["mn10"],
             model="anthropic/claude-3.5-haiku",
+            style="detailed",
         )
         assert req.top_k == 3
         assert req.expand_pali is False
         assert req.forbidden_works == ["mn10"]
         assert req.model == "anthropic/claude-3.5-haiku"
+        assert req.style == "detailed"
+
+    def test_style_default_is_none(self) -> None:
+        # ``None`` means "defer to server-side default" — distinct
+        # from explicitly choosing ``"auto"``, even though the
+        # observable behaviour is the same when default is ``"auto"``.
+        req = AnswerRequest(query="x")
+        assert req.style is None
+
+    def test_style_invalid_value_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            AnswerRequest(query="x", style="verbose")  # type: ignore[arg-type]
 
 
 class TestAnswerResponse:
@@ -51,6 +64,7 @@ class TestAnswerResponse:
             llm_model="openrouter/anthropic/claude-haiku-4.5",
             llm_tokens_in=120,
             llm_tokens_out=80,
+            style="auto",
             retrieval_metadata=PipelineMetadata(
                 version="dharma_v2-rerank0-parents1-pali1",
                 collection="dharma_v2",

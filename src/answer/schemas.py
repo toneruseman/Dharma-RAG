@@ -18,9 +18,24 @@ backwards-compatibility lifecycles.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from src.rag.schemas import PipelineMetadata, Source
+
+AnswerStyle = Literal["auto", "concise", "detailed"]
+"""Length/depth preference for the LLM answer.
+
+* ``auto`` (default) — model picks length to match question complexity:
+  a single-fact question gets 1-2 sentences, a fundamental "what is X?"
+  question gets a structured multi-paragraph explanation. No artificial
+  compression, no padding.
+* ``concise`` — explicit short mode: 2-4 sentences with citations only.
+  Useful for chat-style Q&A or when token budget matters.
+* ``detailed`` — explicit thorough mode: multi-paragraph or numbered
+  structure, every claim cited. Useful for "explain to me" / learning
+  use cases or when sources are rich and the user wants depth."""
 
 
 class AnswerRequest(BaseModel):
@@ -65,6 +80,15 @@ class AnswerRequest(BaseModel):
             "comparing models without restarting the service."
         ),
     )
+    style: AnswerStyle | None = Field(
+        default=None,
+        description=(
+            "Length/depth preference. ``None`` defers to server-side "
+            "``answer_default_style`` (default ``'auto'``). "
+            "Override per-request when the client UI exposes a "
+            "concise/detailed toggle."
+        ),
+    )
 
 
 class AnswerMetadata(BaseModel):
@@ -92,6 +116,14 @@ class AnswerMetadata(BaseModel):
     )
     llm_tokens_out: int = Field(
         ..., ge=0, description="Output tokens generated (the answer text itself)."
+    )
+    style: AnswerStyle = Field(
+        ...,
+        description=(
+            "Effective answer style applied to this request "
+            "(``auto`` / ``concise`` / ``detailed``). Resolved from the "
+            "request override, else from the server-side default."
+        ),
     )
     retrieval_metadata: PipelineMetadata = Field(
         ...,
@@ -147,4 +179,5 @@ __all__ = [
     "AnswerMetadata",
     "AnswerRequest",
     "AnswerResponse",
+    "AnswerStyle",
 ]

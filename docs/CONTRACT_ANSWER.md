@@ -35,6 +35,7 @@ Content-Type: application/json
 | `expand_pali` | bool \| null | | null | Forwarded to retrieval. `null` defers to server-side default; `true`/`false` overrides per request. |
 | `forbidden_works` | string[] \| null | | null | Forwarded to retrieval. Drops sources whose `work_canonical_id` appears in this list **before** the LLM call. |
 | `model` | string \| null | | null | Optional override of the OpenRouter model id (e.g. `"anthropic/claude-3.5-haiku"`). `null` uses the server-side `answer_llm_model`. |
+| `style` | `"auto"` \| `"concise"` \| `"detailed"` \| null | | null | Length/depth preference. `null` defers to server-side `answer_default_style` (currently `"auto"`). `"concise"` = 2-4 sentences. `"detailed"` = multi-paragraph, every claim cited. `"auto"` = model picks length to match question complexity. |
 
 ---
 
@@ -62,6 +63,7 @@ Content-Type: application/json
     "llm_model": "openrouter/anthropic/claude-haiku-4.5",
     "llm_tokens_in": 1820,
     "llm_tokens_out": 124,
+    "style": "auto",
     "retrieval_metadata": {
       "version": "dharma_v2-rerank0-parents1-pali1",
       "collection": "dharma_v2",
@@ -88,6 +90,7 @@ Content-Type: application/json
 | `metadata.pipeline_version` | Compact retrieval config label, copied from `retrieval_metadata.version`. Useful for correlating answer quality with retrieval config in eval/logs. |
 | `metadata.llm_model` | OpenRouter id of the model that generated the answer. Format `openrouter/vendor/model`, e.g. `openrouter/anthropic/claude-haiku-4.5`. |
 | `metadata.llm_tokens_in` / `llm_tokens_out` | Token counts from the LLM provider. `0` when the LLM was skipped. |
+| `metadata.style` | Effective style applied to this request (resolved from request override or server default). One of `"auto"` / `"concise"` / `"detailed"`. |
 | `metadata.retrieval_metadata` | Full `PipelineMetadata` from `/api/query`, embedded so consumers don't need a second round-trip. |
 
 ---
@@ -132,6 +135,18 @@ $r = Invoke-RestMethod -Uri http://localhost:8000/api/answer -Method POST -Body 
 
 ```powershell
 $r = Invoke-RestMethod -Uri http://localhost:8000/api/answer -Method POST -Body '{"query":"что такое джхана?","expand_pali":false}' -ContentType 'application/json'; $r.metadata.retrieval_metadata.expand_pali
+```
+
+### Detailed answer (multi-paragraph)
+
+```powershell
+$r = Invoke-RestMethod -Uri http://localhost:8000/api/answer -Method POST -Body '{"query":"что такое джхана?","style":"detailed","top_k":5}' -ContentType 'application/json'; "STYLE: $($r.metadata.style)"; $r.answer
+```
+
+### Concise answer (2-4 sentences)
+
+```powershell
+$r = Invoke-RestMethod -Uri http://localhost:8000/api/answer -Method POST -Body '{"query":"что такое джхана?","style":"concise"}' -ContentType 'application/json'; $r.answer
 ```
 
 ---

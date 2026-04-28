@@ -72,6 +72,7 @@ class StubAnswerService(AnswerServiceProtocol):
                 llm_model="stub/static",
                 llm_tokens_in=0,
                 llm_tokens_out=0,
+                style=request.style or "auto",
                 retrieval_metadata=rag_response.metadata,
             ),
         )

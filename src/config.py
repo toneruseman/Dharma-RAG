@@ -68,6 +68,15 @@ class Settings(BaseSettings):
     # ``model`` to override per-call without restart.
     answer_llm_model: str = Field(default="anthropic/claude-haiku-4.5")
 
+    # Default verbosity / structure of the LLM answer:
+    #   - ``auto``    — model matches length to question complexity
+    #   - ``concise`` — 2-4 sentences, citations only
+    #   - ``detailed`` — multi-paragraph / numbered, every claim cited
+    # Default ``auto`` after rag-day-24 follow-up: 'concise' under-served
+    # fundamental questions like "what is jhāna" — auto delegates to the
+    # model. Per-request override available via ``AnswerRequest.style``.
+    answer_default_style: Literal["auto", "concise", "detailed"] = Field(default="auto")
+
     # --- Pāli glossary expansion (rag-day-23) ---
     # ``True``: rewrite the user query before encode by appending the
     # canonical Pāli lemma + its top-1 EN/RU meaning from DPD. Closes

@@ -68,7 +68,7 @@ def get_answer_service(
         default_model=settings.answer_llm_model,
         base_url=settings.openrouter_base_url,
     )
-    return AnswerService(rag_service=rag_service, llm=llm)
+    return AnswerService(rag_service=rag_service, llm=llm, settings=settings)
 
 
 __all__ = ["get_answer_service"]
