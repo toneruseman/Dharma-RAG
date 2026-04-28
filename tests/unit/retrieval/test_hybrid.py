@@ -107,8 +107,10 @@ def fake_enrich(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     """
     captured: list[dict[str, Any]] = []
 
-    async def _stub(_session: Any, fused: list[Any]) -> list[HybridHit]:
-        captured.append({"fused_count": len(fused)})
+    async def _stub(
+        _session: Any, fused: list[Any], *, expand_parents: bool = True
+    ) -> list[HybridHit]:
+        captured.append({"fused_count": len(fused), "expand_parents": expand_parents})
         return [
             HybridHit(
                 chunk_id=f.doc_id,
@@ -119,6 +121,8 @@ def fake_enrich(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
                 text=f"placeholder text {i}",
                 rrf_score=f.score,
                 per_channel_rank=f.per_channel_rank,
+                child_text=f"placeholder text {i}",
+                expanded=False,
             )
             for i, f in enumerate(fused)
         ]
@@ -228,7 +232,7 @@ async def test_orchestrator_runs_all_three_channels_and_fuses(
     using_seen = sorted(c["using"] for c in client.calls)
     assert using_seen == ["bge_m3_dense", "bge_m3_sparse"]
     # Three docs flowed into enrichment.
-    assert fake_enrich == [{"fused_count": 3}]
+    assert fake_enrich == [{"fused_count": 3, "expand_parents": True}]
     # All three docs make it back as HybridHits.
     chunk_ids = {h.chunk_id for h in hits}
     assert chunk_ids == {chunk_a, chunk_b, chunk_c}

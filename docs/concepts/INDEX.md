@@ -32,12 +32,12 @@
 | [09 — Eval и golden set](09-eval-and-golden-set.md) | день 14, ongoing | ✅ |
 | [10 — Cross-encoder reranking](10-cross-encoder-reranking.md) | день 13 | ✅ |
 | [11 — Contextual Retrieval](11-contextual-retrieval.md) | дни 15-17 | ✅ (prompt v1) |
+| [12 — Parent/child retrieval (small-to-big)](12-parent-child-retrieval.md) | день 18 | ✅ |
 
 ## Что появится позже
 
 | Концепт | План |
 |---|---|
-| 12 — Parent-document retrieval | день 18 |
 | 13 — LLM generation + prompt caching | дни 22-30 |
 | 14 — Citation verification | день 30+ |
 | 15 — Production deployment | дни 50+ |

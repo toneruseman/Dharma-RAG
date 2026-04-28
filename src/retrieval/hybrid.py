@@ -69,7 +69,16 @@ tracer = trace.get_tracer(__name__)
 # bounded for ~50-150 ms of GPU time.
 DEFAULT_PER_CHANNEL_LIMIT: int = 30
 DEFAULT_TOP_K: int = 8
-DEFAULT_RERANK: bool = True
+# Day-17 A/B showed BGE-reranker-v2-m3 *degrades* quality on context-
+# prefixed embeddings (the dharma_v2 winner). Default flipped from True
+# (day-13) to False (day-18). Production endpoint can still opt back in
+# via ``rerank=true`` in the request body.
+DEFAULT_RERANK: bool = False
+# Day-18 small-to-big retrieval. Search matches a child (~384 tokens,
+# precise); the LLM gets the parent (~1024-2048 tokens, rich). Off only
+# for back-compat: A/B with day-12 baseline, or the rerank=True path
+# where the cross-encoder needs to score the raw child.
+DEFAULT_EXPAND_PARENTS: bool = True
 
 
 class EncoderProtocol(Protocol):
@@ -131,6 +140,7 @@ async def hybrid_search(
     rrf_k: int = DEFAULT_K,
     rerank: bool = DEFAULT_RERANK,
     collection_name: str = COLLECTION_NAME,
+    expand_parents: bool = DEFAULT_EXPAND_PARENTS,
 ) -> tuple[list[HybridHit], HybridSearchTimings]:
     """Run all stages for ``query`` and return fused/enriched/(reranked) hits.
 
@@ -163,6 +173,13 @@ async def hybrid_search(
         ``dharma_v2`` (context-prepended) here to compare. BM25 channel
         is unaffected — it reads from Postgres ``chunk.text``, which is
         identical across collections.
+    expand_parents:
+        Day-18 small-to-big retrieval. When ``True`` (default),
+        ``HybridHit.text`` is the parent chunk text (rich context for
+        the LLM); ``child_text`` keeps the matched fragment for UI
+        highlighting. Set ``False`` to fall back to child-only text —
+        used by ``rerank=True`` so the cross-encoder scores the raw
+        child rather than its expanded parent.
     """
     if rerank and reranker is None:
         raise ValueError("rerank=True requires a reranker; pass one or set rerank=False.")
@@ -243,12 +260,17 @@ async def hybrid_search(
     t_enrich = time.perf_counter()
     with tracer.start_as_current_span("hybrid.enrich") as enrich_span:
         enrich_span.set_attribute("hybrid.enrich.candidates", len(fused))
-        enriched = await _enrich(db_session, fused)
+        enrich_span.set_attribute("hybrid.expand_parents", expand_parents)
+        enriched = await _enrich(db_session, fused, expand_parents=expand_parents)
     enrich_s = time.perf_counter() - t_enrich
 
     # ------------------------------------------------------------------
     # Stage 5 — Reranker. Optional. Reorders ``enriched`` by a
     # cross-encoder pass and truncates to ``top_k``.
+    # The reranker scores ``child_text`` (the precise matched fragment)
+    # rather than the expanded parent — day-17 A/B showed scoring on
+    # the expanded text degrades ranking. Falls back to ``text`` for
+    # callers that disabled parent expansion (then ``text == child``).
     # ------------------------------------------------------------------
     rerank_s = 0.0
     if rerank and enriched:
@@ -258,7 +280,11 @@ async def hybrid_search(
             rerank_span.set_attribute("hybrid.rerank.candidates", len(enriched))
             rerank_span.set_attribute("hybrid.rerank.top_k", top_k)
             candidates = [
-                CandidateForRerank(chunk_id=h.chunk_id, text=h.text, rrf_rank=idx)
+                CandidateForRerank(
+                    chunk_id=h.chunk_id,
+                    text=h.child_text if h.child_text is not None else h.text,
+                    rrf_rank=idx,
+                )
                 for idx, h in enumerate(enriched)
             ]
             reranked = await asyncio.to_thread(reranker.rerank, query, candidates, top_k=top_k)
@@ -288,6 +314,8 @@ async def hybrid_search(
                     per_channel_rank=base.per_channel_rank,
                     rerank_score=rh.score,
                     rrf_rank=rh.rrf_rank,
+                    child_text=base.child_text,
+                    expanded=base.expanded,
                 )
             )
         hits = out
@@ -322,27 +350,47 @@ async def hybrid_search(
 async def _enrich(
     session: AsyncSession,
     fused: list[FusedHit],
+    *,
+    expand_parents: bool = True,
 ) -> list[HybridHit]:
     """Replace ``FusedHit`` with text-bearing :class:`HybridHit`.
 
-    A single round-trip pulls every needed field; we sort the rows
-    back into RRF order client-side because SQL ``IN (…)`` does not
-    promise order.
+    With ``expand_parents=True`` (day-18 default) this is a "small-to-
+    big" lookup: search matched a child chunk (~384 tokens, precise),
+    but the LLM gets the parent (~1024-2048 tokens, rich context). We
+    do this with a single LEFT JOIN of ``chunk`` to itself on
+    ``parent_chunk_id`` so the round-trip stays a single query — same
+    cost as the day-12 enrichment.
+
+    With ``expand_parents=False`` callers get the day-12 behaviour
+    (``HybridHit.text`` is the child's own text). Useful for the
+    ``rerank=True`` path where the cross-encoder needs to score the
+    raw child, and for A/B against historical baselines.
     """
+    if not fused:
+        return []
     chunk_ids = [h.doc_id for h in fused]
+
+    # Self-join: ``parent`` aliases the same ``chunk`` table reached via
+    # ``Chunk.parent_chunk_id``. LEFT JOIN so children whose parent is
+    # missing (legacy ingest, top-level chunks) still appear — they
+    # fall back to their own text below.
+    parent = sa.orm.aliased(Chunk)
     stmt = (
         sa.select(
             Chunk.id,
-            Chunk.text,
+            Chunk.text.label("child_text_col"),
             Chunk.parent_chunk_id,
             Chunk.segment_id,
             Chunk.is_parent,
+            parent.text.label("parent_text"),
             Work.canonical_id.label("work_canonical_id"),
         )
         .select_from(Chunk)
         .join(Instance, Instance.id == Chunk.instance_id)
         .join(Expression, Expression.id == Instance.expression_id)
         .join(Work, Work.id == Expression.work_id)
+        .join(parent, parent.id == Chunk.parent_chunk_id, isouter=True)
         .where(Chunk.id.in_(chunk_ids))
     )
     rows = (await session.execute(stmt)).all()
@@ -357,6 +405,18 @@ async def _enrich(
                 f.doc_id,
             )
             continue
+        # Decide which text to surface. With expansion off we keep the
+        # day-12 child-only behaviour. With expansion on we substitute
+        # the parent passage when one exists; otherwise fall back to
+        # the child (and mark ``expanded=False`` so callers can tell).
+        child_text = row.child_text_col
+        parent_text = row.parent_text
+        if expand_parents and parent_text is not None:
+            display_text = parent_text
+            expanded = True
+        else:
+            display_text = child_text
+            expanded = False
         hits.append(
             HybridHit(
                 chunk_id=row.id,
@@ -364,11 +424,13 @@ async def _enrich(
                 segment_id=row.segment_id,
                 parent_chunk_id=row.parent_chunk_id,
                 is_parent=row.is_parent,
-                text=row.text,
+                text=display_text,
                 rrf_score=f.score,
                 per_channel_rank=f.per_channel_rank,
                 rerank_score=None,
                 rrf_rank=None,
+                child_text=child_text,
+                expanded=expanded,
             )
         )
     return hits
