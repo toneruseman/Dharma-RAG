@@ -34,14 +34,20 @@
 | [11 — Contextual Retrieval](11-contextual-retrieval.md) | дни 15-17 | ✅ (prompt v1) |
 | [12 — Parent/child retrieval (small-to-big)](12-parent-child-retrieval.md) | день 18 | ✅ |
 | [13 — RAG-service contract (`/api/query`)](13-rag-service-contract.md) | день 19 | ✅ |
+| [14 — Pāli глоссарий и query expansion](14-pali-glossary.md) | rag-day-23 | ✅ |
+| [15 — Answer generation (`/api/answer`)](15-answer-generation.md) | rag-day-24 | ✅ |
+| [16 — OpenAPI typegen для frontend](16-openapi-typegen.md) | app-day-03 | ✅ |
+| [17 — Базовый layout `web/`](17-base-layout.md) | app-day-04 | ✅ |
 
 ## Что появится позже
 
 | Концепт | План |
 |---|---|
-| 14 — LLM generation + prompt caching | дни 22-30 |
-| 15 — Citation verification | день 30+ |
-| 16 — Production deployment | дни 50+ |
+| 18 — Reading Room layout | app-day-21+ |
+| 19 — Search UI с фильтрами | app-day-31+ |
+| 20 — Chat SSE streaming | app-day-38+ |
+| 21 — Citation verification | rag-day-30+ |
+| 22 — Production deployment | app-day-53+ |
 
 ## Сводный layer над концептами
 
