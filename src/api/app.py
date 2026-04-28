@@ -54,12 +54,16 @@ def create_app() -> FastAPI:
             env=settings.app_env.value,
             host=settings.app_host,
             port=settings.app_port,
+            rag_backend=settings.rag_backend,
         )
         try:
             yield
         finally:
             shutdown_query_service()
-            await shutdown_retrieve_resources()
+            # Only call retrieval shutdown if we actually started it.
+            # In stub mode no resources were allocated.
+            if settings.rag_backend == "real":
+                await shutdown_retrieve_resources()
             shutdown_tracing()
             log.info("api.shutdown")
 
@@ -82,13 +86,17 @@ def create_app() -> FastAPI:
     # middleware never runs and every request is invisible to Phoenix.
     setup_tracing(fastapi_app=app)
 
-    # Mount the retrieval router. install_router() also creates the
-    # singleton RetrievalResources (BGE-M3 encoder, Qdrant client, DB
-    # engine) — actual model load is still deferred to first encode.
-    install_retrieve_router(app)
-    # Query router (rag-day-19) reuses the same RetrievalResources via
-    # ``src.api.retrieve.get_resources`` — no second encoder/Qdrant/DB
-    # pool. Install order matters: query depends on retrieve.
+    # In ``real`` mode we mount the diagnostic /api/retrieve endpoint,
+    # which also owns the heavy RetrievalResources (BGE-M3, Qdrant,
+    # reranker, DB pool). The /api/query router reuses those resources
+    # via ``src.api.retrieve.get_resources``.
+    #
+    # In ``stub`` mode (default for fresh clones / frontend dev) we
+    # skip the retrieval router entirely and the query router builds
+    # a StubRAGService that needs no infrastructure. The /api/query
+    # contract is identical, just with hardcoded fixture sources.
+    if settings.rag_backend == "real":
+        install_retrieve_router(app)
     install_query_router(app)
 
     @app.get(

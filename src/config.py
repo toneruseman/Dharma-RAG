@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -57,6 +58,15 @@ class Settings(BaseSettings):
     retrieval_collection: str = Field(default="dharma_v2")
     retrieval_rerank_default: bool = Field(default=False)
     retrieval_expand_parents_default: bool = Field(default=True)
+
+    # --- RAG backend selection (app-day-02) ---
+    # ``stub`` returns hardcoded fixture sources in ~1 ms and needs no
+    # GPU / Qdrant / Postgres — ideal for frontend dev and CI smoke
+    # tests. ``real`` boots BGE-M3, Qdrant, the DB pool, and the
+    # reranker — production / GPU machines. Default is ``stub`` so a
+    # fresh clone can run ``pnpm dev`` without infrastructure;
+    # production deployments override via env.
+    rag_backend: Literal["stub", "real"] = Field(default="stub")
 
     # --- Embedding & evaluation APIs ---
     voyage_api_key: str = Field(default="")
