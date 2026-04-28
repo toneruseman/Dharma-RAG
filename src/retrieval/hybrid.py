@@ -53,6 +53,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models.frbr import Chunk, Expression, Instance, Work
 from src.embeddings.bge_m3 import EncodedBatch
+from src.embeddings.indexer import COLLECTION_NAME
 from src.retrieval import bm25, dense, sparse
 from src.retrieval.reranker import CandidateForRerank, RerankedHit
 from src.retrieval.rrf import DEFAULT_K, FusedHit, reciprocal_rank_fusion
@@ -129,6 +130,7 @@ async def hybrid_search(
     per_channel_limit: int = DEFAULT_PER_CHANNEL_LIMIT,
     rrf_k: int = DEFAULT_K,
     rerank: bool = DEFAULT_RERANK,
+    collection_name: str = COLLECTION_NAME,
 ) -> tuple[list[HybridHit], HybridSearchTimings]:
     """Run all stages for ``query`` and return fused/enriched/(reranked) hits.
 
@@ -155,6 +157,12 @@ async def hybrid_search(
         eval).
     rrf_k:
         Flattening constant for RRF. Default 60.
+    collection_name:
+        Qdrant collection to query for dense + sparse channels. Default
+        ``dharma_v1`` (no Contextual Retrieval). Day-17 A/B uses
+        ``dharma_v2`` (context-prepended) here to compare. BM25 channel
+        is unaffected — it reads from Postgres ``chunk.text``, which is
+        identical across collections.
     """
     if rerank and reranker is None:
         raise ValueError("rerank=True requires a reranker; pass one or set rerank=False.")
@@ -184,10 +192,18 @@ async def hybrid_search(
     with tracer.start_as_current_span("hybrid.channels") as channels_span:
         channels_span.set_attribute("hybrid.per_channel_limit", per_channel_limit)
         dense_task = asyncio.to_thread(
-            dense.dense_search, qdrant_client, dense_vec, limit=per_channel_limit
+            dense.dense_search,
+            qdrant_client,
+            dense_vec,
+            collection=collection_name,
+            limit=per_channel_limit,
         )
         sparse_task = asyncio.to_thread(
-            sparse.sparse_search, qdrant_client, sparse_weights, limit=per_channel_limit
+            sparse.sparse_search,
+            qdrant_client,
+            sparse_weights,
+            collection=collection_name,
+            limit=per_channel_limit,
         )
         bm25_task = bm25.search(db_session, query, limit=per_channel_limit)
         dense_hits, sparse_hits, bm25_hits = await asyncio.gather(
@@ -256,7 +272,7 @@ async def hybrid_search(
             base = by_id.get(rh.chunk_id)
             if base is None:
                 logger.warning(
-                    "Reranker returned chunk %s not in enriched set — " "shouldn't happen.",
+                    "Reranker returned chunk %s not in enriched set — shouldn't happen.",
                     rh.chunk_id,
                 )
                 continue
@@ -280,8 +296,7 @@ async def hybrid_search(
 
     total_s = time.perf_counter() - t_start
     logger.info(
-        "hybrid_search query=%r dense=%d sparse=%d bm25=%d fused=%d rerank=%s "
-        "out=%d total=%.3fs",
+        "hybrid_search query=%r dense=%d sparse=%d bm25=%d fused=%d rerank=%s out=%d total=%.3fs",
         query,
         len(dense_hits),
         len(sparse_hits),

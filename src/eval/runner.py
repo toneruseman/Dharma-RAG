@@ -110,6 +110,7 @@ async def run_eval(
     reranker: RerankerCallable | None,
     rerank: bool,
     top_k: int = DEFAULT_EVAL_TOP_K,
+    collection_name: str | None = None,
 ) -> list[PerQueryResult]:
     """Run ``hybrid_search`` over every item in ``golden`` and collect results.
 
@@ -125,19 +126,35 @@ async def run_eval(
         encoder + Qdrant + DB session — only the final stage differs.
     top_k:
         Forwarded to ``hybrid_search``. Default 20.
+    collection_name:
+        Qdrant collection. ``None`` (default) uses ``hybrid_search``'s own
+        default (``dharma_v1``). Day-17 A/B passes ``"dharma_v2"`` here
+        to evaluate the contextualized embeddings.
     """
     results: list[PerQueryResult] = []
     for idx, item in enumerate(golden.items, start=1):
         t0 = time.perf_counter()
-        hits, timings = await hybrid_search(
-            query=item.query,
-            encoder=encoder,
-            qdrant_client=qdrant_client,
-            db_session=db_session,
-            reranker=reranker,
-            top_k=top_k,
-            rerank=rerank,
-        )
+        if collection_name is None:
+            hits, timings = await hybrid_search(
+                query=item.query,
+                encoder=encoder,
+                qdrant_client=qdrant_client,
+                db_session=db_session,
+                reranker=reranker,
+                top_k=top_k,
+                rerank=rerank,
+            )
+        else:
+            hits, timings = await hybrid_search(
+                query=item.query,
+                encoder=encoder,
+                qdrant_client=qdrant_client,
+                db_session=db_session,
+                reranker=reranker,
+                top_k=top_k,
+                rerank=rerank,
+                collection_name=collection_name,
+            )
         elapsed = time.perf_counter() - t0
         retrieved_works = tuple(h.work_canonical_id for h in hits)
         results.append(

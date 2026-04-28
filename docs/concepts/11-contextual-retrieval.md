@@ -131,6 +131,21 @@ Prompt v2 явно перечисляет известные пары MN 118 = A
 |---|---|
 | **15** ✅ | Prompt v1 валидирован in-chat (50 sample), модуль + DI готов |
 | **16** ✅ | OpenRouter provider, prompt v2, миграция 004 (chunk.context_*), industrial run на 6,478 chunks (~$8), переэмбеддинг в `dharma_v2` |
-| **17** | A/B golden v0.0 на v1 vs v2, ожидаем +15-30 pp на ref_hit@5 |
+| **17** ✅ | A/B golden v0.0: ref_hit@5 0.400 → **0.567** (+16.7 pp), MRR 0.244 → 0.368. **Сюрприз**: reranker ухудшает v2 → production-default = `dharma_v2` + `rerank=False` |
 | **30+** | Re-prompt iteration если industrial вылез за пределы 50-130 ток |
 | **50+ (Phase 4)** | Второй prompt-template для dharmaseed talks (другая доменная специфика — устные речи, lineage учителя, год ретрита) |
+
+## День 17 итоги
+
+| Метрика | v1 + rerank (день 13 baseline) | **v2 без rerank** (winner) | Δ |
+|---|---:|---:|---:|
+| ref_hit@1 | 0.133 | **0.233** | +0.100 |
+| **ref_hit@5** | **0.400** | **0.567** | **+0.167** |
+| ref_hit@10 | 0.433 | 0.633 | +0.200 |
+| ref_hit@20 | 0.600 | 0.767 | +0.167 |
+| MRR | 0.244 | 0.368 | +0.124 |
+| Latency/запрос | 7.5 с | **65 мс** | −115× |
+
+**День-14 headline failure исправлен**: запрос «Where did the Buddha first teach the four noble truths?» теперь возвращает sn56.11 на 5-й позиции (было: вне top-20).
+
+**Reranker не нужен для v2**. Гипотеза: BGE-reranker-v2-m3 обучен на raw chunk text, и на префиксованных embedding'ах он начинает оценивать context↔query вместо chunk↔query. Production-default: `dharma_v2 + rerank=False`.

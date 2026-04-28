@@ -284,6 +284,49 @@ async def test_orchestrator_passes_per_channel_limit(
 
 
 @pytest.mark.asyncio
+async def test_orchestrator_passes_collection_name_to_qdrant_channels(
+    fake_enrich: list[dict[str, Any]], fake_bm25: dict[str, list[Any]]
+) -> None:
+    """Day-17 A/B: ``collection_name="dharma_v2"`` must reach both
+    Qdrant channels. BM25 channel reads from Postgres so it does not
+    take a collection arg — we don't assert anything about it here."""
+    encoder = FakeEncoder()
+    client = FakeQdrantClient()
+    await hybrid_search(
+        query="foo",
+        encoder=encoder,
+        qdrant_client=client,
+        db_session=object(),  # type: ignore[arg-type]
+        rerank=False,
+        collection_name="dharma_v2",
+    )
+    qdrant_calls = [c for c in client.calls if c["using"] in ("bge_m3_dense", "bge_m3_sparse")]
+    assert qdrant_calls, "expected at least one Qdrant channel call"
+    for call in qdrant_calls:
+        assert call["collection_name"] == "dharma_v2"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_default_collection_is_dharma_v1(
+    fake_enrich: list[dict[str, Any]], fake_bm25: dict[str, list[Any]]
+) -> None:
+    """Without an explicit override the orchestrator must keep hitting
+    the day-10 collection — production endpoint relies on this."""
+    encoder = FakeEncoder()
+    client = FakeQdrantClient()
+    await hybrid_search(
+        query="foo",
+        encoder=encoder,
+        qdrant_client=client,
+        db_session=object(),  # type: ignore[arg-type]
+        rerank=False,
+    )
+    qdrant_calls = [c for c in client.calls if c["using"] in ("bge_m3_dense", "bge_m3_sparse")]
+    for call in qdrant_calls:
+        assert call["collection_name"] == "dharma_v1"
+
+
+@pytest.mark.asyncio
 async def test_orchestrator_returns_empty_when_no_channel_hits(
     fake_enrich: list[dict[str, Any]], fake_bm25: dict[str, list[Any]]
 ) -> None:
