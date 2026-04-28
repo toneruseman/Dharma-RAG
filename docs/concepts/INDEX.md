@@ -43,10 +43,20 @@
 | 15 — Citation verification | день 30+ |
 | 16 — Production deployment | дни 50+ |
 
+## Сводный layer над концептами
+
+Если нужен **integration view** (всё вместе), а не deep-dive по одному концепту — это два документа уровнем выше:
+
+- [docs/ARCHITECTURE.md](../ARCHITECTURE.md) — модули, data flow, storage, dependencies
+- [docs/RAG_PIPELINE.md](../RAG_PIPELINE.md) — runtime trace одного `POST /api/query` со spans и diagram'ами
+
+Concepts здесь объясняют **зачем** каждый кусок устроен именно так; ARCHITECTURE/PIPELINE объясняют **как они вместе работают**.
+
 ## Если ты в новом чате
 
 Покажи новому ассистенту ссылки:
 
+- [docs/ARCHITECTURE.md](../ARCHITECTURE.md) — single-page обзор системы
 - Этот INDEX
 - [docs/RAG_DEVELOPMENT_PLAN.md](../RAG_DEVELOPMENT_PLAN.md) — общий план
 - [docs/STATUS.md](../STATUS.md) — что закрыто, что в работе
