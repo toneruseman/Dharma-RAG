@@ -6,9 +6,9 @@
 > **Source of truth:** git log + этот файл. Чаты не являются source of truth.
 
 - **Версия:** 2026-04-28
-- **Ветка:** `dev` (активная: `feat/rag-day-20-docs`)
-- **Последний релиз:** `v0.0.3` — Retrieval Foundation (2026-04-22)
-- **Следующий milestone:** v0.1.0 Foundation (rag-day-21)
+- **Ветка:** `dev` (активная: `feat/rag-day-21-v0.1.0-release`)
+- **Последний релиз:** `v0.1.0` — Phase 1 Foundation (2026-04-28)
+- **Следующий milestone:** v0.2.0 (Phase 2 — LLM generation, rag-day-22+)
 - **Стратегия:** **B** — RAG-first до `v0.1.0` (`rag-day-21`), затем интерливинг RAG+APP
 
 ---
@@ -51,7 +51,8 @@
 | rag-day-17 | A/B `dharma_v1` vs `dharma_v2` on synthetic golden v0.0. **Headline win**: `ref_hit@5` 0.400 → 0.567 (+16.7 pp), `ref_hit@20` 0.600 → 0.767 (+16.7 pp), MRR 0.244 → 0.368 (+12.4 pp). **Surprise**: cross-encoder reranker **degrades** quality on contextualized embeddings (v2+rerank 0.467 < v2 alone 0.567). New production-default candidate: **`dharma_v2` + `rerank=False`** (~115× faster per query). Day-14 headline miss (qa_002 sn56.11) FIXED — sutta now at top-5. `docs/EVAL_CONTEXTUAL_AB.md` published. 269 unit tests. | ✅ Done | `7fd3a7e` |
 | rag-day-18 | Parent/child small-to-big retrieval + production cutover. New `HybridHit.child_text/expanded` fields; `_enrich` does a self-JOIN to substitute parent text when present. `hybrid_search(expand_parents=True)` default; reranker still scores `child_text` (independent of expansion). Production cutover: `RetrievalResources` now reads `settings.retrieval_collection` (`dharma_v2`), `retrieval_rerank_default` (False), `retrieval_expand_parents_default` (True). Concept doc 12. 267 unit tests. | ✅ Done | `de85fea` |
 | rag-day-19 | `POST /api/query` — stable production retrieval endpoint with frozen contract. New `src/rag/{schemas,service}.py`: `QueryRequest` (semantic params only — no `rerank`/`expand_parents` knobs), `QueryResponse` with stripped `Source` shape (no internal scores/IDs), `PipelineMetadata` (`version`, `collection`, `rerank`, `expand_parents`, `n_candidates`). `RAGService` reuses `RetrievalResources` singleton via `get_resources()` — no second BGE-M3 load. Score normalisation: sigmoid on rerank, RRF/top-RRF otherwise. `forbidden_works` post-filter. Concept doc 13. 285 unit tests. | ✅ Done | `72d4dba` |
-| rag-day-20 | Integration-level docs: `docs/ARCHITECTURE.md` (module map, data flow ingest→query, storage, external deps, dependency rules) + `docs/RAG_PIPELINE.md` (per-stage runtime trace, mermaid sequence + component diagrams, Phoenix span tree, latency breakdown ~78 ms, failure modes table). Sits above per-concept docs in `docs/concepts/` as the "single page that explains the whole system". No code changes; 285 unit tests still green. | ✅ Done | (this branch) |
+| rag-day-20 | Integration-level docs: `docs/ARCHITECTURE.md` (module map, data flow ingest→query, storage, external deps, dependency rules) + `docs/RAG_PIPELINE.md` (per-stage runtime trace, mermaid sequence + component diagrams, Phoenix span tree, latency breakdown ~78 ms, failure modes table). Sits above per-concept docs in `docs/concepts/` as the "single page that explains the whole system". No code changes; 285 unit tests still green. | ✅ Done | `8406793` |
+| **rag-day-21** | **`v0.1.0` release — Phase 1 Foundation closed.** Version bumped 0.0.3 → 0.1.0 in `src/__init__.py` + `pyproject.toml`. CHANGELOG `[Unreleased]` consolidated under `[0.1.0] — 2026-04-28`. `docs/RELEASE_v0.1.0.md` published (highlights, numbers, what's not in scope, quickstart, migration from v0.0.3, blockers, what ships next). 285 unit tests green; mypy strict + ruff clean. Tag `v0.1.0` to be created after PR merge. | ✅ Done | (this branch) |
 | … | (всего 120 дней в плане) | | |
 
 ### App-трек

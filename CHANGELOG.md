@@ -9,7 +9,27 @@
 
 ## [Unreleased]
 
+_(no unreleased changes yet — next entries will land here on `dev`.)_
+
+---
+
+## [0.1.0] — 2026-04-28 — Phase 1 Foundation
+
+End of Phase 1. Closes the 21-day plan: SuttaCentral corpus → Postgres FRBR → hybrid retrieval (BGE-M3 dense + sparse + Postgres BM25, RRF fusion) → Contextual Retrieval (`dharma_v2` collection via OpenRouter/Haiku 3.5) → parent/child small-to-big expansion → stable `POST /api/query` contract → integration-level docs (`ARCHITECTURE.md` + `RAG_PIPELINE.md`).
+
+**Headline numbers** (synthetic golden v0.0, n=30 — directional only, NOT authoritative pending B-001 buddhologist set):
+- `ref_hit@5` = **0.567** (production: `dharma_v2` + `rerank=False` + `expand_parents=True`)
+- `ref_hit@20` = 0.767 — improvement of +16.7 pp on each over the day-13 baseline (`dharma_v1` + rerank)
+- `MRR` = 0.368 (vs 0.244 baseline)
+- Latency: ~80 ms/query end-to-end on GTX 1080 Ti (encode 50% / channels 30% / enrich 12% / RRF + service post-processing 8%)
+
+**Surface delivered**: `POST /api/query` (frozen public contract, day 19), `POST /api/retrieve` (internal diagnostic surface), `/health`. LLM generation deliberately **not** in scope — Phase 2 (day 22+).
+
+**Phase 1 gate** (per plan): `ref_hit@5 ≥ 0.60`. Synthetic v0.0 hit 0.567 — within noise of target on n=30; authoritative judgement deferred until B-001 is unblocked.
+
 ### Added
+- **rag-day-21:** v0.1.0 release. `__version__` and `pyproject.toml` bumped 0.0.3 → 0.1.0. `docs/RELEASE_v0.1.0.md` published. Closes the 21-day Phase 1 plan.
+
 - **rag-day-20:** Integration-level documentation. `docs/ARCHITECTURE.md` is the single-page system overview: module-by-module responsibility map across `src/{api,rag,retrieval,embeddings,db,ingest,processing,contextual,eval,observability}`, ingest data flow (SuttaCentral → Postgres FRBR → BGE-M3 → Qdrant `dharma_v2`), query data flow (one-line summary of the 5-stage pipeline), storage / external deps tables, and inter-module dependency rules (`api→rag→retrieval→embeddings/db`). `docs/RAG_PIPELINE.md` is the runtime trace: a canonical `POST /api/query` request stepped through with mermaid sequence + component diagrams, per-stage spans (`hybrid.encode`, `hybrid.channels`, `hybrid.rrf`, `hybrid.enrich`, `hybrid.rerank`) with code references, latency breakdown (~78 ms total, dominated by encode + channels), Phoenix span tree, failure-mode table (cold start, missing migration 003, reranker accidentally on, etc.). These two docs sit above the per-concept files in `docs/concepts/` so a new contributor (or future-self after 3 months) can read one page instead of 13. No code changes; 285 unit tests still green; mypy strict + ruff clean.
 
 - **rag-day-19:** `POST /api/query` — stable production retrieval endpoint with frozen contract. New `src/rag/` module: `schemas.py` (`QueryRequest`/`QueryResponse`/`Source`/`PipelineMetadata`) and `service.py` (`RAGService` class). The contract is intentionally narrower than `/api/retrieve`: clients pass only **semantic** parameters (`query`, `top_k≤20`, `language`, `forbidden_works`); pipeline knobs (`rerank`, `expand_parents`, collection, per-channel limit) are **server-side defaults** read from `Settings`. Response strips internal diagnostics (`rrf_score`, `per_channel_rank`, `rerank_score`, `parent_chunk_id`, `chunk_id`) and exposes only `text` (parent), `snippet` (matched child), and a normalised `score ∈ [0,1]`. **Score normalisation:** sigmoid on rerank logits when reranker ran, RRF/top-RRF fallback otherwise — within-response only, not a calibrated probability. **`PipelineMetadata`** carries `version` (e.g. `dharma_v2-rerank0-parents1`), `collection`, `rerank`, `expand_parents`, `n_candidates` (pre-`forbidden_works` pool size). **Resource sharing:** `src/api/query.py::install_router` reuses the singleton `RetrievalResources` from `src.api.retrieve.get_resources()` — no second BGE-M3 (2.3 GB) or reranker (1.1 GB) load. Lifespan ordering enforces install of retrieve before query. Concept doc `docs/concepts/13-rag-service-contract.md`. **18 new unit tests** (schemas + service helpers + RAGService.query with stubbed `hybrid_search`); full suite 285 passed; mypy strict + ruff clean.
