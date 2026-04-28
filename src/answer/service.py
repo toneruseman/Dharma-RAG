@@ -37,11 +37,17 @@ Rules:
 """
 
 
-# Match ``[work_id]`` citations. Case-insensitive because LLMs
-# occasionally capitalise (``[MN10]``); we lowercase before matching
-# against ``source_ids`` so canonical lowercase IDs from the corpus
-# always win.
-_CITATION_RE = re.compile(r"\[([a-zA-Z0-9._-]+)\]")
+# Match the **contents** of any bracket pair, then split on commas.
+# Models naturally emit two patterns:
+#   1. ``[mn10]`` — single work
+#   2. ``[mn10, dn22]`` — multiple works in one bracket (Claude prefers this)
+# Earlier regex ``\[([a-zA-Z0-9._-]+)\]`` rejected pattern (2) entirely
+# because the character class doesn't include comma/space. We now match
+# anything between brackets and split client-side, then validate each
+# fragment against ``source_ids`` so non-citation brackets (e.g.
+# ``[stub fixture — ...]``, code, footnote markers) are filtered out.
+_CITATION_BRACKET_RE = re.compile(r"\[([^\[\]]+)\]")
+_CITATION_FRAGMENT_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 def _build_user_message(query: str, sources: list[Source]) -> str:
@@ -71,19 +77,31 @@ def _build_user_message(query: str, sources: list[Source]) -> str:
 def _extract_citations(answer_text: str, source_ids: set[str]) -> list[str]:
     """Pull citation strings out of the answer and intersect with sources.
 
-    The model is instructed to use ``[work_id]`` format. We extract
-    every match and keep only those that correspond to an actual
-    retrieved source — discards model hallucinations (rare but
-    possible) and stray bracket usage. Order is first-appearance,
-    deduplicated.
+    Handles three real-world model output patterns:
+      * ``[mn10]`` — single work
+      * ``[mn10, dn22]`` — multi-citation, comma-separated (Claude default)
+      * ``[mn10][dn22]`` — adjacent single brackets
+
+    Filtering rules:
+      * Each comma-separated fragment must look like a work_id
+        (``^[a-zA-Z0-9._-]+$``) — kicks out free-form text accidentally
+        wrapped in brackets (e.g. ``[stub fixture — ...]``).
+      * Fragment is then lowercased and intersected with ``source_ids``;
+        anything missing (model hallucinations) is dropped.
+      * Order is first-appearance, deduplicated.
     """
     seen: set[str] = set()
     out: list[str] = []
-    for match in _CITATION_RE.finditer(answer_text):
-        cid = match.group(1).lower()
-        if cid in source_ids and cid not in seen:
-            seen.add(cid)
-            out.append(cid)
+    for match in _CITATION_BRACKET_RE.finditer(answer_text):
+        contents = match.group(1)
+        for fragment in contents.split(","):
+            cid = fragment.strip()
+            if not _CITATION_FRAGMENT_RE.match(cid):
+                continue
+            cid = cid.lower()
+            if cid in source_ids and cid not in seen:
+                seen.add(cid)
+                out.append(cid)
     return out
 
 

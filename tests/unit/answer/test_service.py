@@ -160,6 +160,42 @@ class TestExtractCitations:
     def test_no_brackets_returns_empty(self) -> None:
         assert _extract_citations("plain text without citations", {"mn10"}) == []
 
+    def test_comma_separated_multi_citation(self) -> None:
+        """Real Claude output: '[mn39, dn10]' — both must be extracted.
+        This is the day-24 bug spotted in production: the previous
+        regex rejected the whole bracket because comma wasn't in the
+        character class."""
+        text = "Practice is taught [mn39, dn10] and elaborated [mn65, mn39]."
+        ids = _extract_citations(text, {"mn39", "dn10", "mn65"})
+        assert ids == ["mn39", "dn10", "mn65"]
+
+    def test_comma_separated_with_unknown_filtered(self) -> None:
+        """Hallucinated id inside a comma-separated bracket is
+        dropped, but the valid sibling is still picked up."""
+        text = "[mn39, fake99]"
+        ids = _extract_citations(text, {"mn39"})
+        assert ids == ["mn39"]
+
+    def test_freeform_brackets_ignored(self) -> None:
+        """Bracket-wrapped free text (stub disclaimer, footnotes)
+        must not be misread as citations."""
+        text = "[Stub answer — RAG_BACKEND=stub.] Foundation [mn10]."
+        ids = _extract_citations(text, {"mn10"})
+        assert ids == ["mn10"]
+
+    def test_adjacent_single_brackets(self) -> None:
+        """``[mn10][dn22]`` — adjacent single brackets, sometimes
+        emitted by models. Both should be picked up."""
+        text = "Both [mn10][dn22] discuss this."
+        ids = _extract_citations(text, {"mn10", "dn22"})
+        assert ids == ["mn10", "dn22"]
+
+    def test_extra_whitespace_inside_brackets(self) -> None:
+        """Loose model output with spaces — still parsed."""
+        text = "[ mn10 ,  dn22 ]"
+        ids = _extract_citations(text, {"mn10", "dn22"})
+        assert ids == ["mn10", "dn22"]
+
 
 @pytest.mark.asyncio
 async def test_answer_happy_path() -> None:
