@@ -16,6 +16,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from src import __version__
+from src.api.query import install_router as install_query_router
+from src.api.query import shutdown_service as shutdown_query_service
 from src.api.retrieve import install_router as install_retrieve_router
 from src.api.retrieve import shutdown_resources as shutdown_retrieve_resources
 from src.config import get_settings
@@ -56,6 +58,7 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            shutdown_query_service()
             await shutdown_retrieve_resources()
             shutdown_tracing()
             log.info("api.shutdown")
@@ -83,6 +86,10 @@ def create_app() -> FastAPI:
     # singleton RetrievalResources (BGE-M3 encoder, Qdrant client, DB
     # engine) — actual model load is still deferred to first encode.
     install_retrieve_router(app)
+    # Query router (rag-day-19) reuses the same RetrievalResources via
+    # ``src.api.retrieve.get_resources`` — no second encoder/Qdrant/DB
+    # pool. Install order matters: query depends on retrieve.
+    install_query_router(app)
 
     @app.get(
         "/health",

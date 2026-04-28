@@ -187,6 +187,19 @@ async def get_session() -> AsyncIterator[AsyncSession]:
         yield session
 
 
+def get_resources() -> RetrievalResources:
+    """Return the shared singleton — used by ``src.api.query`` to reuse
+    the BGE-M3 encoder, Qdrant client, reranker, and DB session-maker
+    rather than instantiating a second 2.3 GB model in the same
+    process.
+
+    Must be called after ``install_router(app)``.
+    """
+    if _resources is None:
+        raise RuntimeError("Retrieval resources not initialised — call install_router(app).")
+    return _resources
+
+
 # ---------------------------------------------------------------------------
 # Router + endpoint
 # ---------------------------------------------------------------------------
