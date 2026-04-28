@@ -59,6 +59,15 @@ class Settings(BaseSettings):
     retrieval_rerank_default: bool = Field(default=False)
     retrieval_expand_parents_default: bool = Field(default=True)
 
+    # --- Answer generation (rag-day-24) ---
+    # OpenRouter model used by ``AnswerService`` to synthesise the
+    # ``POST /api/answer`` response. Format follows OpenRouter's
+    # ``vendor/model`` convention. Default ``anthropic/claude-haiku-4.5``
+    # — fast (~1.5-3 s) and cheap, tuned for grounded RAG (low
+    # temperature). Override via env for A/B; the request can also pass
+    # ``model`` to override per-call without restart.
+    answer_llm_model: str = Field(default="anthropic/claude-haiku-4.5")
+
     # --- Pāli glossary expansion (rag-day-23) ---
     # ``True``: rewrite the user query before encode by appending the
     # canonical Pāli lemma + its top-1 EN/RU meaning from DPD. Closes
