@@ -131,7 +131,17 @@ class TestExpandQuery:
         g = _build_minimal_glossary()
         out = g.expand_query("paṭicca")
         assert out.startswith("paṭicca ")
-        # Top-2 EN + top-2 RU by default.
+        # Default ``max_meanings=1`` post day-23 tuning: only top-1 EN
+        # + top-1 RU per recognised term (the second-rank synonyms
+        # diluted queries on targeted eval).
+        assert "dependent" in out
+        assert "зависимый" in out
+
+    def test_pali_with_diacritics_adds_more_with_max_meanings_2(self) -> None:
+        """Explicit ``max_meanings=2`` recovers the wider expansion that
+        used to be the default before day-23 tuning."""
+        g = _build_minimal_glossary()
+        out = g.expand_query("paṭicca", max_meanings=2)
         assert "dependent" in out
         assert "conditioned" in out
         assert "зависимый" in out
@@ -165,8 +175,9 @@ class TestExpandQuery:
         g = _build_minimal_glossary()
         out = g.expand_query("что такое джхана?")
         assert "jhāna" in out
-        assert "медитация" in out
+        # Default max_meanings=1: top-1 EN + top-1 RU only.
         assert "meditative absorption" in out
+        assert "медитативное погружение" in out
         # Original query preserved verbatim at the start.
         assert out.startswith("что такое джхана?")
 
@@ -198,11 +209,12 @@ class TestExpandQuery:
 
     def test_max_meanings_caps_per_term(self) -> None:
         g = _build_minimal_glossary()
-        # paṭicca has 2 EN + 2 RU; max_meanings=1 should land 1+1.
-        out = g.expand_query("paṭicca", max_meanings=1)
-        assert "dependent" in out
+        # paṭicca has 2 EN + 2 RU; max_meanings=0 keeps only the lemma.
+        out = g.expand_query("paṭicca", max_meanings=0)
+        assert "paṭicca" in out
+        assert "dependent" not in out
         assert "conditioned" not in out
-        assert "зависимый" in out
+        assert "зависимый" not in out
         assert "обусловленный" not in out
 
     def test_query_appears_unchanged_at_start(self) -> None:
