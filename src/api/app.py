@@ -16,6 +16,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from src import __version__
+from src.api.answer import install_router as install_answer_router
+from src.api.answer import shutdown_service as shutdown_answer_service
 from src.api.query import install_router as install_query_router
 from src.api.query import shutdown_service as shutdown_query_service
 from src.api.retrieve import install_router as install_retrieve_router
@@ -59,6 +61,7 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            shutdown_answer_service()
             shutdown_query_service()
             # Only call retrieval shutdown if we actually started it.
             # In stub mode no resources were allocated.
@@ -98,6 +101,7 @@ def create_app() -> FastAPI:
     if settings.rag_backend == "real":
         install_retrieve_router(app)
     install_query_router(app)
+    install_answer_router(app)
 
     @app.get(
         "/health",

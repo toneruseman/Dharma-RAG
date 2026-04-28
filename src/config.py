@@ -59,6 +59,45 @@ class Settings(BaseSettings):
     retrieval_rerank_default: bool = Field(default=False)
     retrieval_expand_parents_default: bool = Field(default=True)
 
+    # --- Answer generation (rag-day-24) ---
+    # OpenRouter model used by ``AnswerService`` to synthesise the
+    # ``POST /api/answer`` response. Format follows OpenRouter's
+    # ``vendor/model`` convention.
+    #
+    # Default ``deepseek/deepseek-v4-flash`` chosen after a 16-model
+    # comparison on a typical Pāli-canon question
+    # (``docs/EVAL_ANSWER_MODELS.md``):
+    #   * ~14-25 s end-to-end (vs ~40-48 s for Opus 4.6).
+    #   * ~$0.003 per request (vs $0.10 for Opus, $0.014 for prior
+    #     Haiku 4.5 default).
+    #   * A− quality: full Pāli with diacritics, all four canonical
+    #     similes (banker / lake / lotus / white cloth), prerequisites
+    #     section, 9 progressive meditations, three higher knowledges.
+    # Per-request ``model`` override allows A/B without restart;
+    # ``answer_llm_model_premium`` below for the slow-but-rich variant.
+    answer_llm_model: str = Field(default="deepseek/deepseek-v4-flash")
+
+    # Premium-tier model for future ``/api/answer?premium=true`` or a
+    # dedicated slow endpoint. Reserved here so operators can swap the
+    # premium choice via env without code change.
+    #
+    # Default ``moonshotai/kimi-k2-thinking`` — produces the longest,
+    # most structured answers in the comparison (~2667 output tokens,
+    # ~$0.012 per request); only Opus 4.6 surpasses it (and at 8× cost).
+    # Switch to ``anthropic/claude-opus-4.6`` if you want the unique
+    # ``anupubba-nirodha`` (per-jhāna cessation) section that only Opus
+    # produced reliably.
+    answer_llm_model_premium: str = Field(default="moonshotai/kimi-k2-thinking")
+
+    # Default verbosity / structure of the LLM answer:
+    #   - ``auto``    — model matches length to question complexity
+    #   - ``concise`` — 2-4 sentences, citations only
+    #   - ``detailed`` — multi-paragraph / numbered, every claim cited
+    # Default ``auto`` after rag-day-24 follow-up: 'concise' under-served
+    # fundamental questions like "what is jhāna" — auto delegates to the
+    # model. Per-request override available via ``AnswerRequest.style``.
+    answer_default_style: Literal["auto", "concise", "detailed"] = Field(default="auto")
+
     # --- Pāli glossary expansion (rag-day-23) ---
     # ``True``: rewrite the user query before encode by appending the
     # canonical Pāli lemma + its top-1 EN/RU meaning from DPD. Closes
