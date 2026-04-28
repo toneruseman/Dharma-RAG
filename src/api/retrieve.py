@@ -35,8 +35,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from src.config import get_settings
 from src.embeddings.bge_m3 import BGEM3Encoder
 from src.retrieval.hybrid import (
+    DEFAULT_EXPAND_PARENTS,
     DEFAULT_PER_CHANNEL_LIMIT,
-    DEFAULT_RERANK,
     DEFAULT_TOP_K,
     hybrid_search,
 )
@@ -74,12 +74,23 @@ class RetrieveRequest(BaseModel):
             "input pool size."
         ),
     )
-    rerank: bool = Field(
-        DEFAULT_RERANK,
+    rerank: bool | None = Field(
+        default=None,
         description=(
-            "Run the cross-encoder reranker over the RRF candidates. True by "
-            "default. Set False for the bi-encoder-only baseline (faster, "
-            "lower precision) or for A/B comparisons."
+            "Run the cross-encoder reranker over the RRF candidates. ``None`` "
+            "(default) follows the server-side default in ``settings."
+            "retrieval_rerank_default`` (False after the day-17 cutover — "
+            "BGE-reranker degrades quality on dharma_v2). Pass ``True`` "
+            "explicitly to force-enable for A/B."
+        ),
+    )
+    expand_parents: bool = Field(
+        DEFAULT_EXPAND_PARENTS,
+        description=(
+            "Day-18 small-to-big retrieval. When True (default), each result's "
+            "``text`` is the parent chunk passage (rich context for the LLM); "
+            "the precise matched fragment is in ``child_text``. Set False to "
+            "fall back to child-only text (day-12 behaviour)."
         ),
     )
 
@@ -102,6 +113,22 @@ class RetrieveResultItem(BaseModel):
     rrf_rank: int | None = Field(
         default=None,
         description="Position in the RRF list before reranking (None if no rerank).",
+    )
+    child_text: str | None = Field(
+        default=None,
+        description=(
+            "The precise child fragment that matched (day-18 parent expansion). "
+            "Use this for highlighted citation snippets in the UI; ``text`` is "
+            "the broader parent passage."
+        ),
+    )
+    expanded: bool = Field(
+        default=False,
+        description=(
+            "True when ``text`` is the parent chunk (small-to-big expansion); "
+            "False when no parent existed and ``text`` falls back to the "
+            "child's own text."
+        ),
     )
 
 
@@ -182,6 +209,8 @@ async def retrieve(
         # dependency already raises. Belt-and-braces for direct calls.
         raise HTTPException(status_code=503, detail="Service initialising.")
 
+    settings = get_settings()
+    rerank_resolved = body.rerank if body.rerank is not None else settings.retrieval_rerank_default
     hits, timings = await hybrid_search(
         query=body.query,
         encoder=_resources.encoder,
@@ -190,7 +219,9 @@ async def retrieve(
         reranker=_resources.reranker,
         top_k=body.top_k,
         per_channel_limit=body.per_channel_limit,
-        rerank=body.rerank,
+        rerank=rerank_resolved,
+        collection_name=settings.retrieval_collection,
+        expand_parents=body.expand_parents,
     )
 
     return RetrieveResponse(
@@ -207,6 +238,8 @@ async def retrieve(
                 per_channel_rank=h.per_channel_rank,
                 rerank_score=h.rerank_score,
                 rrf_rank=h.rrf_rank,
+                child_text=h.child_text,
+                expanded=h.expanded,
             )
             for h in hits
         ],

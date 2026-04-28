@@ -49,6 +49,15 @@ class Settings(BaseSettings):
     # validated default per Anthropic's Contextual Retrieval paper.
     context_model: str = Field(default="anthropic/claude-3.5-haiku")
 
+    # --- Retrieval runtime defaults (rag-day-18 cutover) ---
+    # Day-17 A/B picked dharma_v2 + rerank=False as the production-best
+    # configuration on synthetic golden v0.0 (ref_hit@5 0.567 vs 0.400 baseline,
+    # ~115x faster). Settings rather than hard-coded constants so dev/staging/
+    # prod can swap collections or re-enable the reranker without code change.
+    retrieval_collection: str = Field(default="dharma_v2")
+    retrieval_rerank_default: bool = Field(default=False)
+    retrieval_expand_parents_default: bool = Field(default=True)
+
     # --- Embedding & evaluation APIs ---
     voyage_api_key: str = Field(default="")
     cohere_api_key: str = Field(default="")

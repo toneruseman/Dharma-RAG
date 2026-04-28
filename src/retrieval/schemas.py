@@ -47,6 +47,14 @@ class HybridHit:
     field is ``None`` and the result order is RRF order. ``rrf_rank``
     likewise records the position in the RRF list, useful for noting
     "the reranker pulled this from rank 12 up to rank 2".
+
+    ``text`` carries the **parent** chunk text when day-18 parent
+    expansion is on (the standard "small-to-big" pattern: search on
+    children, hand the parent to the LLM for context). ``child_text``
+    is the precise child fragment that actually matched — the UI
+    highlights this snippet inside the parent passage. ``expanded`` is
+    True when a parent was substituted, False on top-level chunks that
+    have no parent (rare; legacy ingest, or a parent matched directly).
     """
 
     chunk_id: UUID
@@ -59,3 +67,5 @@ class HybridHit:
     per_channel_rank: dict[str, int | None]
     rerank_score: float | None = None
     rrf_rank: int | None = None
+    child_text: str | None = None
+    expanded: bool = False
