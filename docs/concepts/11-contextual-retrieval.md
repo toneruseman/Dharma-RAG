@@ -99,12 +99,38 @@ Anthropic выигрывает за счёт **prompt caching** (parent чита
 - [docs/contextual/validation_output_opus_v1.md](../contextual/validation_output_opus_v1.md) — 50 контекстов от Opus 4.7 (валидация prompt v1)
 - [tests/unit/contextual/test_contextualizer.py](../../tests/unit/contextual/test_contextualizer.py) — 22 unit-теста на чистые helper'ы
 
+## Provider выбран: OpenRouter
+
+День 16 закрепил выбор провайдера: **OpenRouter** (один API key для многих моделей, включая Anthropic Haiku 3.5). Преимущества над прямым Anthropic:
+- Один платежный путь (внутри РФ работает; криптоплатежи поддерживаются)
+- Свобода смены модели через переменную окружения `CONTEXT_MODEL` без изменения кода
+- На dharmaseed-этапе (Phase 4) можно переключиться на DeepSeek V3 / Gemini Flash без переписывания провайдера
+
+Архитектурно — `OpenRouterProvider` поверх OpenAI-совместимого API. Anthropic-style `cache_control: {"type": "ephemeral"}` пробрасывается прозрачно. Реализация в [src/contextual/providers/openrouter.py](../../src/contextual/providers/openrouter.py).
+
+## Prompt v2 (фикс после смоук-теста)
+
+День 16 первый smoke-run на 5 чанках выявил **систематическую проблему** prompt v1: Haiku галлюцинировал Pāli-имена сутт. Конкретный пример — MN 118 был назван «Satipaṭṭhāna Sutta» (на самом деле это Anāpānassati Sutta; Satipaṭṭhāna — это MN 10 / DN 22).
+
+Prompt v2 явно перечисляет известные пары MN 118 = Anāpānassati, MN 10 = Satipaṭṭhāna, SN 56.11 = Dhammacakkappavattana и инструктирует модель **omit rather than guess** при неуверенности. Версия записывается в `Chunk.context_version` (`v2-2026-04-27`) для будущих миграций.
+
+## Реальная стоимость и время
+
+| Метрика | Прогноз дня 15 | Реальность дня 16 |
+|---|---:|---:|
+| Стоимость на 6,478 chunks | ~$10 | **~$8** (cap $15) |
+| Время прогона sequential | ~6 ч | (не делали) |
+| Время prompt cache hit | существенно | **0** (parents <2048 токенов, ниже Haiku-минимума) |
+| Время с concurrency=5 | — | **~110 минут wallclock** |
+
+Кэш не сработал: средний parent-chunk у нас ~540 токенов, а Haiku 3.5 требует ≥2048 для caching. На dharmaseed-этапе (где talks дают parents 2000+ токенов) кэш будет работать в полную силу.
+
 ## Roadmap
 
 | День | Что |
 |---|---|
 | **15** ✅ | Prompt v1 валидирован in-chat (50 sample), модуль + DI готов |
-| **16** | Industrial run на ~6,478 чанков, выбор provider'а (Haiku или cloud.ru), запись `dharma_v2` в Qdrant |
+| **16** ✅ | OpenRouter provider, prompt v2, миграция 004 (chunk.context_*), industrial run на 6,478 chunks (~$8), переэмбеддинг в `dharma_v2` |
 | **17** | A/B golden v0.0 на v1 vs v2, ожидаем +15-30 pp на ref_hit@5 |
 | **30+** | Re-prompt iteration если industrial вылез за пределы 50-130 ток |
 | **50+ (Phase 4)** | Второй prompt-template для dharmaseed talks (другая доменная специфика — устные речи, lineage учителя, год ретрита) |

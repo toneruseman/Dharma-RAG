@@ -30,12 +30,24 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # --- LLM Provider (required) ---
+    # --- LLM Provider (primary: OpenRouter) ---
+    # OpenRouter is the unified gateway used for Contextual Retrieval
+    # (rag-day-16+) and future generation. Routing is OpenAI-compatible.
+    openrouter_api_key: str = Field(default="")
+    openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1")
+
+    # Direct Anthropic (legacy/fallback). Most code paths route via OpenRouter.
     anthropic_api_key: str = Field(default="")
 
     # --- Optional LLM fallbacks ---
     openai_api_key: str = Field(default="")
     google_api_key: str = Field(default="")
+
+    # --- Contextual Retrieval (rag-day-16+) ---
+    # Default model passed to OpenRouter for context generation. Anything that
+    # OpenRouter routes to is acceptable; ``anthropic/claude-3.5-haiku`` is the
+    # validated default per Anthropic's Contextual Retrieval paper.
+    context_model: str = Field(default="anthropic/claude-3.5-haiku")
 
     # --- Embedding & evaluation APIs ---
     voyage_api_key: str = Field(default="")

@@ -30,6 +30,9 @@ What this module does NOT do (yet)
 
 from src.contextual.contextualizer import (
     PROMPT_TEMPLATE_V1,
+    PROMPT_TEMPLATE_V2,
+    PROMPT_VERSION_V1,
+    PROMPT_VERSION_V2,
     ContextProviderProtocol,
     ContextualizedChunk,
     build_request_messages,
@@ -38,6 +41,9 @@ from src.contextual.contextualizer import (
 
 __all__ = [
     "PROMPT_TEMPLATE_V1",
+    "PROMPT_TEMPLATE_V2",
+    "PROMPT_VERSION_V1",
+    "PROMPT_VERSION_V2",
     "ContextProviderProtocol",
     "ContextualizedChunk",
     "build_request_messages",
