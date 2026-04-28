@@ -44,6 +44,17 @@ Rules:
 - Stay within the Theravāda tradition reflected in the Pāli Canon. Do not introduce Mahāyāna or Vajrayāna concepts unless a source passage explicitly discusses them."""
 
 
+# Output-token cap per style. Sized so the model never gets cut
+# off mid-paragraph for the typical "what is X?" question. Numbers
+# tuned 2026-04-29 after a 6-model comparison where 5/6 models hit
+# the previous flat 1024 cap on `detailed` and were truncated.
+_MAX_TOKENS_BY_STYLE: dict[AnswerStyle, int] = {
+    "concise": 512,
+    "auto": 1024,
+    "detailed": 3072,
+}
+
+
 _STYLE_GUIDANCE: dict[AnswerStyle, str] = {
     "auto": (
         "Match length to question complexity. A simple factual question "
@@ -202,6 +213,7 @@ class AnswerService:
                 system_prompt=build_system_prompt(effective_style),
                 user_message=user_message,
                 model=request.model,
+                max_tokens=_MAX_TOKENS_BY_STYLE[effective_style],
             )
             llm_latency_ms = (time.perf_counter() - llm_start) * 1000.0
             answer_text = llm_result.text

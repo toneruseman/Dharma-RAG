@@ -335,6 +335,24 @@ async def test_answer_server_concise_default_no_request_override() -> None:
 
 
 @pytest.mark.asyncio
+async def test_max_tokens_scales_with_style() -> None:
+    """``concise`` answers shouldn't burn detailed-style budget;
+    ``detailed`` shouldn't be truncated at the auto cap. Verified on
+    the 6-model comparison run that 5/6 models hit the flat 1024
+    cap when style=detailed before this fix."""
+    rag = _StubRAG(sources=[_make_source()])
+
+    expected = {"concise": 512, "auto": 1024, "detailed": 3072}
+    for style, max_tok in expected.items():
+        llm = _StubLLM()
+        service = AnswerService(rag_service=rag, llm=llm)  # type: ignore[arg-type]
+        await service.answer(AnswerRequest(query="x", style=style))  # type: ignore[arg-type]
+        assert llm.calls[0]["max_tokens"] == max_tok, (
+            f"style={style} expected max_tokens={max_tok}, " f"got {llm.calls[0]['max_tokens']}"
+        )
+
+
+@pytest.mark.asyncio
 async def test_answer_drops_hallucinated_citations() -> None:
     """If the model cites a work_id that isn't in our retrieved
     sources we leave it in the answer text but DON'T return it in
