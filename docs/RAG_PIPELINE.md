@@ -104,7 +104,7 @@ sequenceDiagram
     H->>E: encode([query])
     E-->>H: dense (1024d) + sparse weights
 
-    Note over H,Q,P: Stage 2 — 3 channels parallel (~15-40 ms)
+    Note over H,P: Stage 2 — 3 channels parallel (~15-40 ms)
     par dense
         H->>Q: query_points<br/>using=bge_m3_dense
         Q-->>H: top-30 chunk_ids
