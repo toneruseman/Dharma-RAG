@@ -9,7 +9,10 @@
 
 ## [Unreleased]
 
-_(no unreleased changes yet — next entries will land here on `dev`.)_
+### Added
+- **app-day-01:** Monorepo skeleton for the App-track. Root `package.json` declares a pnpm workspace; `pnpm-workspace.yaml` enrols `web/` and `packages/*`, hoisting `ignoredBuiltDependencies` (sharp, unrs-resolver) so the install is reproducible. `web/` scaffolded via `pnpm create next-app@latest` — Next.js 16.2.4 with Turbopack, App Router, TypeScript, Tailwind CSS 4, ESLint 9, React 19. Dev server pinned to `:3001` (FastAPI keeps `:8000`); Turbopack workspace root anchored to the repo via `web/next.config.ts` to silence the inferred-root warning that otherwise surfaced because of unrelated `package-lock.json` files in the user's home. shadcn/ui initialised with `base-nova` style and `neutral` palette → `web/components.json`, `web/lib/utils.ts` (cn helper), `web/components/ui/button.tsx`, plus `tw-animate-css` and `lucide-react` deps. Root scripts: `pnpm dev:web` (Next), `pnpm dev:api` (uvicorn), `pnpm dev` (both via `concurrently`). `.gitignore` extended for node_modules / .next / .pnpm-store / next-env.d.ts. README structure section refreshed to show the dual-stack layout (Python + Next.js). No app features yet — this is a scaffold day so days 2-5 can land mock-RAG, OpenAPI typegen, and Reading Room layout on a working stack.
+
+- **rag-day-22 (in flight):** Tooling for the Phase 2 day-22 ablation lands now; the GPU run + report come in a follow-up commit. New `docs/eval/golden_v0.0_extended.yaml` adds 70 synthetic items to the existing 30-item v0.0 set (final: 100 QA, 30/35/35 by difficulty, 91/7/2 by language en/ru/pli — broader topic coverage including philosophy, cosmology, more soteriology/monastic; adversarial framings around meat-eating / killing; bare-Pāli probes for the multilingual encoder gap). The original `golden_v0.0_synthetic.yaml` is left immutable so day-14 / day-17 reports remain reproducible. `src/eval/runner.py::run_eval` accepts `expand_parents: bool | None`; new `scripts/eval_ablation_v0.0e.py` runs an 8-cell matrix `{dharma_v1, dharma_v2} × {rerank=F,T} × {expand=F,T}` and writes `docs/EVAL_ABLATION_v0.0e.md` with marginal-effect tables and a production-vs-baseline failure analysis. 286 unit tests green (was 285 + 1 new for the extended golden); mypy strict + ruff clean.
 
 ---
 

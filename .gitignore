@@ -110,3 +110,11 @@ docs/old/pdf/
 .claude/settings.local.json
 .claude/.cache/
 .claude/*.log
+
+# Node / pnpm (app-track, app-day-01+)
+node_modules/
+.pnpm-store/
+web/.next/
+web/out/
+web/next-env.d.ts
+*.tsbuildinfo

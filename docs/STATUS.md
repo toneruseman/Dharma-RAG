@@ -6,9 +6,10 @@
 > **Source of truth:** git log + этот файл. Чаты не являются source of truth.
 
 - **Версия:** 2026-04-28
-- **Ветка:** `dev` (активная: `feat/rag-day-21-v0.1.0-release`)
+- **Активные ветки:** RAG `feat/rag-day-22-ablation` · APP `feat/app-day-01-monorepo`
 - **Последний релиз:** `v0.1.0` — Phase 1 Foundation (2026-04-28)
-- **Следующий milestone:** v0.2.0 (Phase 2 — LLM generation, rag-day-22+)
+- **Следующий milestone:** v0.2.0 (Phase 2 — Quality Loop, ablation/glossary/FT)
+- **MVP-ready:** ✅ Готов показать буддологу для разблокировки B-001 (golden v0.1)
 - **Стратегия:** **B** — RAG-first до `v0.1.0` (`rag-day-21`), затем интерливинг RAG+APP
 
 ---
@@ -59,8 +60,8 @@
 
 | Day | Задача | Статус | Коммит |
 |---|---|---|---|
-| app-day-01 | pnpm monorepo + `web/` Next.js 14 scaffold + shadcn/ui | ⏳ Next | — |
-| app-day-02 | `src/rag/schemas.py` + `StubRAGService` + контракт | 📋 Planned | — |
+| app-day-01 | pnpm monorepo + `web/` Next.js 16 (Turbopack) + Tailwind 4 + shadcn/ui (`base-nova` style, `neutral` palette). Root `package.json` with `dev:web` / `dev:api` / `dev` (concurrently). `web/` runs on `:3001`, FastAPI stays on `:8000`. `next.config.ts` pins Turbopack workspace root to repo. `.gitignore` covers node_modules / .next / .pnpm-store. | ✅ Done | (this branch) |
+| app-day-02 | `src/rag/schemas.py` zafiksирован (rag-day-19) + `StubRAGService` для dev | 📋 Planned | — |
 | app-day-03 | OpenAPI → TypeScript типы для фронта | 📋 Planned | — |
 | app-day-04 | Next.js layout + темы + дизайн-токены | 📋 Planned | — |
 | app-day-05 | Docker Compose dev-friendly (web + api + services) | 📋 Planned | — |
