@@ -9,6 +9,7 @@ reads from a YAML fixture) becomes a one-line change in this module.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from src.config import Settings, get_settings
@@ -21,7 +22,31 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
     from src.embeddings.bge_m3 import BGEM3Encoder
+    from src.processing.glossary import Glossary
     from src.retrieval.reranker import BGEReranker
+
+logger = logging.getLogger(__name__)
+
+
+def _try_load_glossary() -> Glossary | None:
+    """Load Pāli glossary if data files are present, else ``None``.
+
+    The glossary is optional: a real-backend deployment without
+    ``data/glossary/dpd_full.json`` (e.g. minimal CI image) still serves
+    queries, just without expansion. Logged once at startup so the
+    operator can spot the missing files.
+    """
+    try:
+        from src.processing.glossary import load_glossary
+
+        glossary = load_glossary()
+    except FileNotFoundError as exc:
+        logger.warning("Pāli glossary not loaded: %s. Expansion disabled.", exc)
+        return None
+    except Exception:  # pragma: no cover — surface any parse error loudly
+        logger.exception("Pāli glossary failed to load. Expansion disabled.")
+        return None
+    return glossary
 
 
 def get_rag_service(
@@ -90,6 +115,7 @@ def get_rag_service(
         reranker=reranker,
         session_maker=session_maker,
         settings=settings,
+        glossary=_try_load_glossary(),
     )
 
 

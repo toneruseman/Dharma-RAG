@@ -55,6 +55,18 @@ class QueryRequest(BaseModel):
             "fewer than ``top_k`` sources."
         ),
     )
+    expand_pali: bool | None = Field(
+        default=None,
+        description=(
+            "Override Pāli-glossary query expansion (rag-day-23). "
+            "``None`` (default) defers to the server-side setting "
+            "``glossary_expand_pali_default``. ``True`` rewrites the "
+            "query with the canonical Pāli lemma + its EN/RU meanings "
+            "before encoding (helps bare-Pāli or cyrillic-transliterated "
+            "queries). ``False`` forces a clean no-expansion run, useful "
+            "for debugging an unexpected hit set."
+        ),
+    )
 
 
 class Source(BaseModel):
@@ -128,6 +140,16 @@ class PipelineMetadata(BaseModel):
     rerank: bool = Field(..., description="Whether the cross-encoder reranker ran.")
     expand_parents: bool = Field(
         ..., description="Whether parent expansion (small-to-big) was applied."
+    )
+    expand_pali: bool = Field(
+        ...,
+        description=(
+            "Whether the query was rewritten via the Pāli glossary "
+            "(rag-day-23) before encoding. ``False`` when either "
+            "disabled by setting/request or when no glossary terms "
+            "matched the query — the metadata field tracks the "
+            "*effective* expansion, not just the toggle."
+        ),
     )
     n_candidates: int = Field(
         ..., ge=0, description="RRF candidate pool size before truncation to ``top_k``."

@@ -59,6 +59,15 @@ class Settings(BaseSettings):
     retrieval_rerank_default: bool = Field(default=False)
     retrieval_expand_parents_default: bool = Field(default=True)
 
+    # --- Pāli glossary expansion (rag-day-23) ---
+    # ``True``: rewrite the user query before encode by appending the
+    # canonical Pāli lemma + its EN/RU meanings from DPD. Closes the gap
+    # on bare-Pāli ("jhāna") and Russian transliteration ("джхана")
+    # queries against an English-mostly corpus. Default ``False`` until
+    # the day-23 mini-eval shows a positive lift on n=100 golden — flip
+    # in a follow-up commit if the data confirms.
+    glossary_expand_pali_default: bool = Field(default=False)
+
     # --- RAG backend selection (app-day-02) ---
     # ``stub`` returns hardcoded fixture sources in ~1 ms and needs no
     # GPU / Qdrant / Postgres — ideal for frontend dev and CI smoke

@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.config import Settings, get_settings
 from src.embeddings.bge_m3 import BGEM3Encoder
+from src.processing.glossary import Glossary
 from src.rag.schemas import PipelineMetadata, QueryRequest, QueryResponse, Source
 from src.retrieval.hybrid import hybrid_search
 from src.retrieval.reranker import BGEReranker
@@ -65,13 +66,21 @@ def _normalise_score(hit: HybridHit, top_rrf_score: float) -> float:
     return min(1.0, max(0.0, hit.rrf_score / top_rrf_score))
 
 
-def _build_version_string(*, collection: str, rerank: bool, expand_parents: bool) -> str:
+def _build_version_string(
+    *,
+    collection: str,
+    rerank: bool,
+    expand_parents: bool,
+    expand_pali: bool,
+) -> str:
     """Compose the pipeline version label embedded in PipelineMetadata.
 
     Compact format chosen so logs and Phoenix span attributes stay
-    grep-able. Example: ``dharma_v2-rerank0-parents1``.
+    grep-able. Example: ``dharma_v2-rerank0-parents1-pali1``.
     """
-    return f"{collection}-rerank{int(rerank)}-parents{int(expand_parents)}"
+    return (
+        f"{collection}-rerank{int(rerank)}-parents{int(expand_parents)}" f"-pali{int(expand_pali)}"
+    )
 
 
 def _hit_to_source(hit: HybridHit, *, score: float) -> Source:
@@ -101,12 +110,14 @@ class RAGService:
         reranker: BGEReranker,
         session_maker: async_sessionmaker[AsyncSession],
         settings: Settings | None = None,
+        glossary: Glossary | None = None,
     ) -> None:
         self._encoder = encoder
         self._qdrant = qdrant_client
         self._reranker = reranker
         self._session_maker = session_maker
         self._settings = settings or get_settings()
+        self._glossary = glossary
 
     @asynccontextmanager
     async def _session(self) -> AsyncIterator[AsyncSession]:
@@ -121,9 +132,25 @@ class RAGService:
         rerank = settings.retrieval_rerank_default
         expand_parents = settings.retrieval_expand_parents_default
 
+        # Effective Pāli expansion: request override wins, else server
+        # default. Skipped if no glossary is loaded — graceful fallback
+        # so a missing dpd_full.json doesn't break the endpoint.
+        expand_pali_requested = (
+            request.expand_pali
+            if request.expand_pali is not None
+            else settings.glossary_expand_pali_default
+        )
+        expand_pali_effective = False
+        encoded_query = request.query
+        if expand_pali_requested and self._glossary is not None:
+            expanded = self._glossary.expand_query(request.query)
+            if expanded != request.query:
+                encoded_query = expanded
+                expand_pali_effective = True
+
         async with self._session() as session:
             hits, _timings = await hybrid_search(
-                query=request.query,
+                query=encoded_query,
                 encoder=self._encoder,
                 qdrant_client=self._qdrant,
                 db_session=session,
@@ -152,10 +179,12 @@ class RAGService:
                     collection=collection,
                     rerank=rerank,
                     expand_parents=expand_parents,
+                    expand_pali=expand_pali_effective,
                 ),
                 collection=collection,
                 rerank=rerank,
                 expand_parents=expand_parents,
+                expand_pali=expand_pali_effective,
                 n_candidates=n_candidates,
             ),
         )

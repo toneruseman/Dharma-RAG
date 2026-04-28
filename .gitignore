@@ -118,3 +118,9 @@ web/.next/
 web/out/
 web/next-env.d.ts
 *.tsbuildinfo
+
+# Pāli glossary raw downloads (rag-day-23) — 15 MB of .mjs from ms-dpd
+# that we re-parse on demand via scripts/build_dpd_glossary.py. The
+# parsed JSON (data/glossary/dpd_full.json, 10 MB) and the manual
+# cyrillic layer (data/glossary/cyrillic.yaml) ARE committed.
+data/glossary/dpd_raw/
