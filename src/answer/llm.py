@@ -71,7 +71,7 @@ class AsyncOpenRouterLLM:
         self,
         *,
         api_key: str,
-        default_model: str = "anthropic/claude-haiku-4.5",
+        default_model: str = "deepseek/deepseek-v4-flash",
         base_url: str = DEFAULT_OPENROUTER_BASE_URL,
         client_factory: Callable[..., Any] | None = None,
         extra_headers: dict[str, str] | None = None,
