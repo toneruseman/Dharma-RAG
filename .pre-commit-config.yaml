@@ -45,4 +45,13 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: package.lock.json
+        # Lockfiles contain cryptographic content hashes (SHA-512 base64)
+        # that detect-secrets flags as Base64-high-entropy. They are not
+        # secrets — they are reproducible-build attestations. The other
+        # hooks in this file still scan source code as before.
+        exclude: |
+          (?x)^(
+            package\.lock\.json
+            |pnpm-lock\.yaml
+            |web/pnpm-lock\.yaml
+          )$
