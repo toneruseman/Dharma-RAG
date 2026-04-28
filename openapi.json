@@ -1,0 +1,589 @@
+{
+  "components": {
+    "schemas": {
+      "AnswerMetadata": {
+        "description": "Diagnostic metadata for an answer call.",
+        "properties": {
+          "llm_model": {
+            "description": "OpenRouter model identifier that produced the answer. Format: ``vendor/model``, e.g. ``anthropic/claude-haiku-4.5``.",
+            "title": "Llm Model",
+            "type": "string"
+          },
+          "llm_tokens_in": {
+            "description": "Input tokens consumed (system + sources + query).",
+            "minimum": 0.0,
+            "title": "Llm Tokens In",
+            "type": "integer"
+          },
+          "llm_tokens_out": {
+            "description": "Output tokens generated (the answer text itself).",
+            "minimum": 0.0,
+            "title": "Llm Tokens Out",
+            "type": "integer"
+          },
+          "pipeline_version": {
+            "description": "Version label of the retrieval pipeline that produced the sources, copied from :class:`PipelineMetadata.version` (e.g. ``dharma_v2-rerank0-parents1-pali1``). Lets a client correlate answer quality with the retrieval config.",
+            "title": "Pipeline Version",
+            "type": "string"
+          },
+          "retrieval_metadata": {
+            "$ref": "#/components/schemas/PipelineMetadata",
+            "description": "Full :class:`PipelineMetadata` from the retrieval call, embedded so consumers don't need a second round-trip to /api/query for diagnostics."
+          },
+          "style": {
+            "description": "Effective answer style applied to this request (``auto`` / ``concise`` / ``detailed``). Resolved from the request override, else from the server-side default.",
+            "enum": [
+              "auto",
+              "concise",
+              "detailed"
+            ],
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pipeline_version",
+          "llm_model",
+          "llm_tokens_in",
+          "llm_tokens_out",
+          "style",
+          "retrieval_metadata"
+        ],
+        "title": "AnswerMetadata",
+        "type": "object"
+      },
+      "AnswerRequest": {
+        "description": "Body of POST /api/answer.",
+        "properties": {
+          "expand_pali": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Forwarded to the underlying retrieval call. ``None`` defers to the server-side ``glossary_expand_pali_default``. ``True``/``False`` overrides per request — useful for side-by-side debugging on the same question.",
+            "title": "Expand Pali"
+          },
+          "forbidden_works": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Forwarded to retrieval. Drops sources whose ``work_canonical_id`` appears in this list before they reach the LLM.",
+            "title": "Forbidden Works"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional override of the OpenRouter model id (e.g. ``anthropic/claude-haiku-4.5``). ``None`` uses the server-side ``answer_llm_model`` setting. Useful for A/B comparing models without restarting the service.",
+            "title": "Model"
+          },
+          "query": {
+            "description": "User question",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "enum": [
+                  "auto",
+                  "concise",
+                  "detailed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Length/depth preference. ``None`` defers to server-side ``answer_default_style`` (default ``'auto'``). Override per-request when the client UI exposes a concise/detailed toggle.",
+            "title": "Style"
+          },
+          "top_k": {
+            "default": 5,
+            "description": "Number of source passages to retrieve and feed to the LLM. Tighter cap than /api/query (which allows 20) because each extra passage costs ~500-1500 input tokens — 5 parents fit comfortably in any context window without inflating the per-request bill.",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "AnswerRequest",
+        "type": "object"
+      },
+      "AnswerResponse": {
+        "description": "Body of the response from POST /api/answer.",
+        "properties": {
+          "answer": {
+            "description": "Synthesised answer in the language of the question. Inline citations appear as ``[work_id]``, e.g. ``[mn36]`` or ``[sn56.11]``. Empty string is returned when retrieval produced no sources — consumers should display a fallback message in that case.",
+            "title": "Answer",
+            "type": "string"
+          },
+          "citations": {
+            "description": "Distinct ``work_canonical_id`` strings that the LLM actually cited (subset of ``sources``). Extracted by matching ``[work_id]`` patterns in the answer text. Empty list when the LLM declined to cite (e.g. 'sources do not answer the question').",
+            "items": {
+              "type": "string"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "latency_ms": {
+            "description": "End-to-end wall-clock time (retrieval + LLM).",
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "llm_latency_ms": {
+            "description": "Time spent in the LLM call (network + generation).",
+            "title": "Llm Latency Ms",
+            "type": "number"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/AnswerMetadata"
+          },
+          "query": {
+            "description": "Echo of the user's question.",
+            "title": "Query",
+            "type": "string"
+          },
+          "retrieval_latency_ms": {
+            "description": "Time spent in the retrieval pipeline.",
+            "title": "Retrieval Latency Ms",
+            "type": "number"
+          },
+          "sources": {
+            "description": "The exact sources fed to the LLM, in the same order. Useful for rendering ``[work_id]`` citation chips in the UI back to the corresponding passage.",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "answer",
+          "sources",
+          "citations",
+          "latency_ms",
+          "retrieval_latency_ms",
+          "llm_latency_ms",
+          "metadata"
+        ],
+        "title": "AnswerResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "description": "Schema for the /health endpoint.",
+        "properties": {
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "service",
+          "version",
+          "environment",
+          "timestamp"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "PipelineMetadata": {
+        "description": "Diagnostic metadata about which pipeline produced the response.\n\nEmbedded so a downstream consumer can reason about answer quality\nwhen the server-side defaults change. Stable in the sense that the\n*fields* are guaranteed; *values* are free to evolve as we tune.",
+        "properties": {
+          "collection": {
+            "description": "Qdrant collection that served the query.",
+            "title": "Collection",
+            "type": "string"
+          },
+          "expand_pali": {
+            "description": "Whether the query was rewritten via the Pāli glossary (rag-day-23) before encoding. ``False`` when either disabled by setting/request or when no glossary terms matched the query — the metadata field tracks the *effective* expansion, not just the toggle.",
+            "title": "Expand Pali",
+            "type": "boolean"
+          },
+          "expand_parents": {
+            "description": "Whether parent expansion (small-to-big) was applied.",
+            "title": "Expand Parents",
+            "type": "boolean"
+          },
+          "n_candidates": {
+            "description": "RRF candidate pool size before truncation to ``top_k``.",
+            "minimum": 0.0,
+            "title": "N Candidates",
+            "type": "integer"
+          },
+          "rerank": {
+            "description": "Whether the cross-encoder reranker ran.",
+            "title": "Rerank",
+            "type": "boolean"
+          },
+          "version": {
+            "description": "Pipeline version string — encodes collection + flags. Format: ``{collection}-rerank{0|1}-parents{0|1}``. Example: ``dharma_v2-rerank0-parents1``.",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "collection",
+          "rerank",
+          "expand_parents",
+          "expand_pali",
+          "n_candidates"
+        ],
+        "title": "PipelineMetadata",
+        "type": "object"
+      },
+      "QueryRequest": {
+        "description": "Body of POST /api/query.",
+        "properties": {
+          "expand_pali": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Override Pāli-glossary query expansion (rag-day-23). ``None`` (default) defers to the server-side setting ``glossary_expand_pali_default``. ``True`` rewrites the query with the canonical Pāli lemma + its EN/RU meanings before encoding (helps bare-Pāli or cyrillic-transliterated queries). ``False`` forces a clean no-expansion run, useful for debugging an unexpected hit set.",
+            "title": "Expand Pali"
+          },
+          "forbidden_works": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional post-filter: drop hits whose ``work_canonical_id`` appears in this list. Use for per-tenant content policy (e.g. excluding texts a community considers sensitive). Filtering is post-RRF — ``top_k`` is honoured after the filter, so requests with a long forbidden list may return fewer than ``top_k`` sources.",
+            "title": "Forbidden Works"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reserved for future filtering. Currently ignored; the corpus is English-only after rag-day-04. Accepting it now lets clients write code that survives the multi-language rollout without a contract bump.",
+            "title": "Language"
+          },
+          "query": {
+            "description": "User query",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "top_k": {
+            "default": 5,
+            "description": "Number of source passages to return. Tighter cap than /api/retrieve (which allows up to 100) because /api/query is sized for direct LLM consumption — 5 parents at ~1.5K tokens each fits comfortably in any context window.",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "QueryRequest",
+        "type": "object"
+      },
+      "QueryResponse": {
+        "description": "Body of the response from POST /api/query.",
+        "properties": {
+          "latency_ms": {
+            "description": "End-to-end wall-clock time in milliseconds.",
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/PipelineMetadata"
+          },
+          "query": {
+            "description": "Echo of the user's query.",
+            "title": "Query",
+            "type": "string"
+          },
+          "sources": {
+            "description": "Top-k source passages in relevance order. May be empty when the query yields no hits or when ``forbidden_works`` filters everything out.",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "sources",
+          "latency_ms",
+          "metadata"
+        ],
+        "title": "QueryResponse",
+        "type": "object"
+      },
+      "Source": {
+        "description": "One source passage in the response.\n\nMapped from :class:`src.retrieval.schemas.HybridHit`. Internal\ndiagnostic fields (``rrf_score``, ``per_channel_rank``,\n``rerank_score``, ``rrf_rank``, ``parent_chunk_id``, ``is_parent``,\n``chunk_id``) are intentionally **dropped** — clients should not\ncouple to retrieval internals. ``score`` is a normalised 0-1\nsummary suitable for UI sorting / thresholding.",
+        "properties": {
+          "score": {
+            "description": "Normalised relevance score in [0, 1]. Source: rerank score (sigmoid-mapped) when the reranker ran, otherwise RRF score scaled by the top hit. Comparable within a single response only — not across responses.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SuttaCentral segment identifier when present. Useful for deep-linking back to the source on suttacentral.net.",
+            "title": "Segment Id"
+          },
+          "snippet": {
+            "description": "The precise child fragment that matched the query. Use for highlighted citations in the UI; ``text`` is the broader passage. When parent expansion is off, ``snippet`` equals ``text``.",
+            "title": "Snippet",
+            "type": "string"
+          },
+          "text": {
+            "description": "Passage handed to the LLM. With server-side parent expansion (default), this is the parent chunk — a semantically-complete section, ~1024-2048 tokens.",
+            "title": "Text",
+            "type": "string"
+          },
+          "work_canonical_id": {
+            "description": "Stable canonical ID like ``mn10`` or ``sn56.11``.",
+            "title": "Work Canonical Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "work_canonical_id",
+          "text",
+          "snippet",
+          "score"
+        ],
+        "title": "Source",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Open, citation-first RAG system for Buddhist teachings. Phase 1 MVP: health endpoint only.",
+    "title": "Dharma RAG",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/answer": {
+      "post": {
+        "operationId": "answer_api_answer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "LLM-grounded answer with inline citations",
+        "tags": [
+          "answer"
+        ]
+      }
+    },
+    "/api/query": {
+      "post": {
+        "operationId": "query_api_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stable production retrieval — top-k source passages",
+        "tags": [
+          "query"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Return a static OK payload.\n\nThis endpoint deliberately does NOT check downstream services so\nit can be used by orchestrators as a cheap liveness signal. A\ndeeper readiness probe will be added in a later phase.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "system"
+        ]
+      }
+    }
+  }
+}

@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated API types from OpenAPI spec (regenerated via `pnpm typegen`).
+# Source-of-truth is ../openapi.json at repo root.
+/lib/api-types.ts
