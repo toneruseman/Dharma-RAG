@@ -74,3 +74,41 @@ def test_retrieve_endpoint_absent_in_stub_mode() -> None:
 
     # FastAPI returns 404 for unknown routes
     assert response.status_code == 404
+
+
+def test_sources_endpoint_returns_fixture_document() -> None:
+    """Reading Room: GET /api/sources/mn10 returns the stub document."""
+    from src.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+
+    with client:
+        response = client.get("/api/sources/mn10")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["canonical_id"] == "mn10"
+    assert payload["title_pali"] == "Satipaṭṭhāna Sutta"
+    assert payload["tradition_code"] == "theravada"
+    assert isinstance(payload["paragraphs"], list)
+    assert len(payload["paragraphs"]) >= 1
+    # Document order is the contract — frontend renders sequentially.
+    sequences = [p["sequence"] for p in payload["paragraphs"]]
+    assert sequences == sorted(sequences)
+    assert payload["translation"]["author"] == "Bhikkhu Sujato"
+    assert payload["translation"]["license"] == "CC0"
+
+
+def test_sources_endpoint_unknown_returns_404() -> None:
+    """Unknown canonical_id maps to a clean 404 with a descriptive detail."""
+    from src.api.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+
+    with client:
+        response = client.get("/api/sources/does_not_exist")
+
+    assert response.status_code == 404
+    assert "does_not_exist" in response.json()["detail"]

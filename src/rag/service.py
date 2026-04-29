@@ -30,13 +30,24 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import sqlalchemy as sa
 from qdrant_client import QdrantClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.config import Settings, get_settings
+from src.db.models.frbr import Chunk, Expression, Instance, Work
+from src.db.models.lookups import Author
 from src.embeddings.bge_m3 import BGEM3Encoder
 from src.processing.glossary import Glossary
-from src.rag.schemas import PipelineMetadata, QueryRequest, QueryResponse, Source
+from src.rag.schemas import (
+    PipelineMetadata,
+    QueryRequest,
+    QueryResponse,
+    Source,
+    SourceDocument,
+    SourceParagraph,
+    SourceTranslation,
+)
 from src.retrieval.hybrid import hybrid_search
 from src.retrieval.reranker import BGEReranker
 from src.retrieval.schemas import HybridHit
@@ -187,4 +198,100 @@ class RAGService:
                 expand_pali=expand_pali_effective,
                 n_candidates=n_candidates,
             ),
+        )
+
+    async def get_source(self, canonical_id: str) -> SourceDocument | None:
+        """Fetch the full document for ``canonical_id`` (e.g. ``mn10``).
+
+        Strategy: pick **one** translation deterministically — English
+        first (``language_code='eng'``), then by ``publication_year``
+        descending, falling back to creation order. Pick the **latest**
+        Instance of that Expression by ``retrieved_at``. Return all
+        parent-chunks of that Instance in document order.
+
+        ``None`` when the work is not in the corpus or has no ingested
+        instance yet — router maps to 404.
+        """
+        async with self._session() as session:
+            work = (
+                await session.execute(sa.select(Work).where(Work.canonical_id == canonical_id))
+            ).scalar_one_or_none()
+            if work is None:
+                return None
+
+            # English first, then most recent translation, then creation
+            # order. Joined with Author so we can render the translator
+            # name without a second round-trip.
+            row = (
+                await session.execute(
+                    sa.select(Expression, Author)
+                    .outerjoin(Author, Expression.author_id == Author.id)
+                    .where(Expression.work_id == work.id)
+                    .order_by(
+                        sa.case((Expression.language_code == "eng", 0), else_=1),
+                        Expression.publication_year.desc().nullslast(),
+                        Expression.created_at.asc(),
+                    )
+                    .limit(1)
+                )
+            ).first()
+            if row is None:
+                logger.warning(
+                    "rag.get_source.no_expression",
+                    extra={"canonical_id": canonical_id},
+                )
+                return None
+            expression, author = row
+
+            instance = (
+                await session.execute(
+                    sa.select(Instance)
+                    .where(Instance.expression_id == expression.id)
+                    .order_by(Instance.retrieved_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if instance is None:
+                logger.warning(
+                    "rag.get_source.no_instance",
+                    extra={"canonical_id": canonical_id},
+                )
+                return None
+
+            chunks = (
+                (
+                    await session.execute(
+                        sa.select(Chunk)
+                        .where(
+                            Chunk.instance_id == instance.id,
+                            Chunk.is_parent.is_(True),
+                        )
+                        .order_by(Chunk.sequence.asc())
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+        return SourceDocument(
+            canonical_id=work.canonical_id,
+            title=work.title,
+            title_pali=work.title_pali,
+            tradition_code=work.tradition_code,
+            is_restricted=work.is_restricted,
+            translation=SourceTranslation(
+                author=author.name if author is not None else None,
+                language_code=expression.language_code,
+                title=expression.title,
+                publication_year=expression.publication_year,
+                license=expression.license,
+            ),
+            paragraphs=[
+                SourceParagraph(
+                    sequence=chunk.sequence,
+                    segment_id=chunk.segment_id,
+                    text=chunk.text,
+                )
+                for chunk in chunks
+            ],
         )

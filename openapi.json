@@ -432,6 +432,156 @@
         "title": "Source",
         "type": "object"
       },
+      "SourceDocument": {
+        "description": "Full document body for the Reading Room.\n\nShape mirrors what a reader needs: identity (``canonical_id`` /\n``title`` / ``title_pali``), provenance (``translation``), and\nbody (``paragraphs`` in document order). Diagnostic retrieval\nfields are intentionally absent — this isn't a search response.",
+        "properties": {
+          "canonical_id": {
+            "description": "Stable canonical ID like ``mn10`` (echoes the path parameter).",
+            "title": "Canonical Id",
+            "type": "string"
+          },
+          "is_restricted": {
+            "default": false,
+            "description": "Vajrayana / tantric works flagged as requiring initiation. When ``True`` the frontend should gate the body behind a consent screen (Phase 5).",
+            "title": "Is Restricted",
+            "type": "boolean"
+          },
+          "paragraphs": {
+            "description": "Document body — parent-chunks in document order. Empty list is theoretically possible (work with no ingested instance) but caller should treat it as an error condition.",
+            "items": {
+              "$ref": "#/components/schemas/SourceParagraph"
+            },
+            "title": "Paragraphs",
+            "type": "array"
+          },
+          "title": {
+            "description": "Canonical title of the work.",
+            "title": "Title",
+            "type": "string"
+          },
+          "title_pali": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pāli title with diacritics when known (e.g. ``Satipaṭṭhāna Sutta``). Useful to display alongside an English translation.",
+            "title": "Title Pali"
+          },
+          "tradition_code": {
+            "description": "Tradition tag from ``tradition_t`` (``theravada``, ``mahayana``…).",
+            "title": "Tradition Code",
+            "type": "string"
+          },
+          "translation": {
+            "$ref": "#/components/schemas/SourceTranslation",
+            "description": "Metadata for the translation chosen by the server."
+          }
+        },
+        "required": [
+          "canonical_id",
+          "title",
+          "tradition_code",
+          "translation",
+          "paragraphs"
+        ],
+        "title": "SourceDocument",
+        "type": "object"
+      },
+      "SourceParagraph": {
+        "description": "A single ordered paragraph (parent-chunk) of the document.",
+        "properties": {
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SuttaCentral-style identifier when present (e.g. ``mn10:12.3``). Used for deep-linking from search results to the matching paragraph.",
+            "title": "Segment Id"
+          },
+          "sequence": {
+            "description": "Position in the document (0-based, document order).",
+            "minimum": 0.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "text": {
+            "description": "Paragraph body — parent-chunk text, ~1024-2048 tokens.",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sequence",
+          "text"
+        ],
+        "title": "SourceParagraph",
+        "type": "object"
+      },
+      "SourceTranslation": {
+        "description": "Provenance metadata for the rendered translation.",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Translator's display name when known (e.g. ``Bhikkhu Sujato``). May be ``None`` for anonymous or compiler editions.",
+            "title": "Author"
+          },
+          "language_code": {
+            "description": "Language code as stored in the corpus, typically ISO 639-3 (``eng``, ``rus``, ``pli``). Stub returns ``en``-style codes for fixture readability — frontend should accept either.",
+            "title": "Language Code",
+            "type": "string"
+          },
+          "license": {
+            "description": "SPDX-like license tag (``CC0``, ``CC-BY-4.0``, ``CC-BY-NC-4.0``, ``ARR``…). Always set — corpus invariant.",
+            "title": "License",
+            "type": "string"
+          },
+          "publication_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Year of publication when known.",
+            "title": "Publication Year"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Translation-specific title, may differ from the work's canonical title (e.g. ``The Establishings of Mindfulness`` for ``mn10``).",
+            "title": "Title"
+          }
+        },
+        "required": [
+          "language_code",
+          "license"
+        ],
+        "title": "SourceTranslation",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -560,6 +710,58 @@
         "summary": "Stable production retrieval — top-k source passages",
         "tags": [
           "query"
+        ]
+      }
+    },
+    "/api/sources/{canonical_id}": {
+      "get": {
+        "operationId": "get_source_api_sources__canonical_id__get",
+        "parameters": [
+          {
+            "description": "Canonical work ID (e.g. ``mn10``, ``sn56.11``, ``dn22``).",
+            "in": "path",
+            "name": "canonical_id",
+            "required": true,
+            "schema": {
+              "description": "Canonical work ID (e.g. ``mn10``, ``sn56.11``, ``dn22``).",
+              "examples": [
+                "mn10"
+              ],
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Canonical Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Work not found in the corpus."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Full document body for the Reading Room",
+        "tags": [
+          "sources"
         ]
       }
     },

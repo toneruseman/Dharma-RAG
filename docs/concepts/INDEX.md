@@ -38,16 +38,17 @@
 | [15 — Answer generation (`/api/answer`)](15-answer-generation.md) | rag-day-24 | ✅ |
 | [16 — OpenAPI typegen для frontend](16-openapi-typegen.md) | app-day-03 | ✅ |
 | [17 — Базовый layout `web/`](17-base-layout.md) | app-day-04 | ✅ |
+| [18 — Reading Room MVP](18-reading-room.md) | app-day-21 | ✅ |
 
 ## Что появится позже
 
 | Концепт | План |
 |---|---|
-| 18 — Reading Room layout | app-day-21+ |
-| 19 — Search UI с фильтрами | app-day-31+ |
-| 20 — Chat SSE streaming | app-day-38+ |
-| 21 — Citation verification | rag-day-30+ |
-| 22 — Production deployment | app-day-53+ |
+| 19 — Reading Room outline + hover-glossary | app-day-22-23 |
+| 20 — Search UI с фильтрами | app-day-31+ |
+| 21 — Chat SSE streaming | app-day-38+ |
+| 22 — Citation verification | rag-day-30+ |
+| 23 — Production deployment | app-day-53+ |
 
 ## Сводный layer над концептами
 
