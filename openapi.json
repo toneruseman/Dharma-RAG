@@ -672,6 +672,46 @@
         ]
       }
     },
+    "/api/answer/stream": {
+      "post": {
+        "operationId": "answer_stream_api_answer_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {}
+            },
+            "description": "An ``text/event-stream`` connection. Each event is one of: ``retrieval_done``, ``token``, ``citation``, ``done``, ``error``. See :mod:`src.answer.stream_schemas` for payloads."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "LLM-grounded answer streamed as Server-Sent Events",
+        "tags": [
+          "answer"
+        ]
+      }
+    },
     "/api/query": {
       "post": {
         "operationId": "query_api_query_post",

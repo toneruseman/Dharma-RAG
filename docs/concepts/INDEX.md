@@ -42,12 +42,12 @@
 | [19 — Chat MVP](19-chat-mvp.md) | app-day-22 (re-prioritised from day-38) | ✅ |
 | [20 — Hover-preview для citations](20-citation-hover-preview.md) | app-day-23 | ✅ |
 | [21 — Confidence indicator](21-confidence-indicator.md) | app-day-24 | ✅ |
+| [22 — SSE streaming](22-sse-streaming.md) | app-day-25 | ✅ |
 
 ## Что появится позже
 
 | Концепт | План |
 |---|---|
-| 20 — SSE streaming (`/api/answer`) | rag-day-25 + app-day-23 |
 | 21 — Reading Room outline + hover-glossary | переехало на app-day-25+ |
 | 22 — Search UI с фильтрами | app-day-31+ |
 | 23 — Citation verification | rag-day-30+ |

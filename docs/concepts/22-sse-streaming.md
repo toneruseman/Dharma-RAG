@@ -1,8 +1,10 @@
 # 22 — SSE streaming для /api/answer (app-day-25)
 
-> **Статус:** proposed (concept review). Backend WIP в commit
-> 95f47bd на ветке feat/app-day-25-sse-streaming-backend; frontend,
-> tests, OpenAPI re-gen, финализация — после approve концепта.
+> **Статус:** реализовано в app-day-25. Backend (`POST /api/answer/stream`),
+> frontend (`web/lib/sse.ts` + `web/app/chat/page.tsx`), тесты
+> (385 unit-тестов green) и регенерация openapi.json — всё закоммичено.
+> Single-shot эндпойнт `POST /api/answer` остаётся жив для buffered
+> клиентов (eval-скрипты, мобильные, admin).
 
 ## Зачем нам streaming
 

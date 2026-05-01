@@ -18,6 +18,7 @@ The streaming endpoint emits typed events: ``retrieval_done``,
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from sse_starlette.sse import EventSourceResponse
@@ -89,7 +90,7 @@ async def answer_stream(body: AnswerRequest) -> EventSourceResponse:
 
     service = _service
 
-    async def event_generator() -> object:
+    async def event_generator() -> AsyncIterator[dict[str, str]]:
         async for event in service.stream_answer(body):
             yield {
                 "event": _EVENT_TYPE[type(event)],
