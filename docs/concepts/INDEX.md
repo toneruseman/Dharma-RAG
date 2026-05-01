@@ -41,6 +41,7 @@
 | [18 — Reading Room MVP](18-reading-room.md) | app-day-21 | ✅ |
 | [19 — Chat MVP](19-chat-mvp.md) | app-day-22 (re-prioritised from day-38) | ✅ |
 | [20 — Hover-preview для citations](20-citation-hover-preview.md) | app-day-23 | ✅ |
+| [21 — Confidence indicator](21-confidence-indicator.md) | app-day-24 | ✅ |
 
 ## Что появится позже
 

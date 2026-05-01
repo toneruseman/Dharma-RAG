@@ -1,17 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AnswerView } from "@/components/chat/AnswerView";
 import { ChatInput } from "@/components/chat/ChatInput";
+import { ConfidenceBadge } from "@/components/chat/ConfidenceBadge";
 import { SourcesPanel } from "@/components/chat/SourcesPanel";
 import { ask, isApiError, type AnswerResponse } from "@/lib/api-client";
+import { computeConfidence } from "@/lib/confidence";
 
 export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<AnswerResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
+
+  const confidence = useMemo(
+    () =>
+      response ? computeConfidence(response.answer, response.sources) : null,
+    [response],
+  );
 
   async function handleSubmit(query: string) {
     setIsLoading(true);
@@ -85,6 +93,7 @@ export default function ChatPage() {
                 <span className="font-mono">{response.metadata.llm_model}</span>
               ) : null}
             </div>
+            {confidence ? <ConfidenceBadge verdict={confidence} /> : null}
             <AnswerView response={response} />
           </div>
           <SourcesPanel sources={response.sources} />
