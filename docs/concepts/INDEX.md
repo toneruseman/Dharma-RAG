@@ -40,6 +40,7 @@
 | [17 — Базовый layout `web/`](17-base-layout.md) | app-day-04 | ✅ |
 | [18 — Reading Room MVP](18-reading-room.md) | app-day-21 | ✅ |
 | [19 — Chat MVP](19-chat-mvp.md) | app-day-22 (re-prioritised from day-38) | ✅ |
+| [20 — Hover-preview для citations](20-citation-hover-preview.md) | app-day-23 | ✅ |
 
 ## Что появится позже
 
