@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from src import __version__
@@ -85,12 +86,28 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # CORS — Next.js dev runs on :3001, FastAPI on :8000, so the browser
+    # treats them as cross-origin and blocks POSTs without explicit
+    # allowance. In dev we whitelist localhost/127.0.0.1 explicitly;
+    # production tightens this in app-day-07 (strict middleware stack).
+    if settings.app_env.value == "development":
+        cors_origins: list[str] = ["http://localhost:3001", "http://127.0.0.1:3001"]
+    else:
+        cors_origins = []  # filled in by app-day-07 with real prod origins
+
     # Tracing wiring must happen BEFORE the ASGI server starts accepting
     # requests — FastAPIInstrumentor adds middleware to the app, and
     # FastAPI/Starlette lock the middleware stack once the first request
     # is processed. Attaching from inside ``lifespan`` is too late: the
     # middleware never runs and every request is invisible to Phoenix.
     setup_tracing(fastapi_app=app)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     # In ``real`` mode we mount the diagnostic /api/retrieve endpoint,
     # which also owns the heavy RetrievalResources (BGE-M3, Qdrant,
