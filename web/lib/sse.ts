@@ -127,7 +127,10 @@ async function runStream(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+      // Normalise CRLF → LF — SSE spec allows both; sse-starlette
+      // sends `\r\n`. Without normalising, `indexOf("\n\n")` never
+      // matches and the parser starves the entire stream.
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
 
       // Each SSE frame ends with a blank line.
       let frameEnd = buffer.indexOf("\n\n");
@@ -138,10 +141,10 @@ async function runStream(
         frameEnd = buffer.indexOf("\n\n");
       }
     }
-    // Any trailing partial frame at EOF — flush it.
-    if (buffer.trim().length > 0) {
-      dispatchFrame(buffer, handlers);
-    }
+    // Trailing buffer at EOF should be empty for a well-formed
+    // server (every event closes with `\n\n`). Anything left is
+    // a truncated frame — silently drop instead of surfacing it as
+    // a malformed-data error.
   } catch (err) {
     if (signal.aborted) return;
     handlers.onTransportError?.(err);
