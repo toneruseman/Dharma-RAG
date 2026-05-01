@@ -12,6 +12,8 @@ from __future__ import annotations
 import logging
 import re
 import time
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
 
 from src.answer.llm import AsyncOpenRouterLLM
 from src.answer.schemas import (
@@ -19,6 +21,13 @@ from src.answer.schemas import (
     AnswerRequest,
     AnswerResponse,
     AnswerStyle,
+)
+from src.answer.stream_schemas import (
+    CitationEvent,
+    DoneEvent,
+    ErrorEvent,
+    RetrievalDoneEvent,
+    TokenEvent,
 )
 from src.config import Settings, get_settings
 from src.rag.protocol import RAGServiceProtocol
@@ -158,6 +167,71 @@ def _extract_citations(answer_text: str, source_ids: set[str]) -> list[str]:
     return out
 
 
+@dataclass(frozen=True, slots=True)
+class CitationFound:
+    """A newly-detected citation in the streaming buffer."""
+
+    id: str
+    """Lowercased canonical work_id."""
+
+    position: int
+    """Character offset in the buffer where the closing ``]`` sits."""
+
+
+class IncrementalCitationScanner:
+    """Stateful scanner that detects citations as text streams in.
+
+    Maintains a running buffer plus a cursor; each :meth:`feed` call
+    appends new text and reports any *newly closed* brackets that
+    contain valid work_ids. A citation is reported at most once per
+    work_id (subsequent duplicates ignored), preserving first-appearance
+    order across the whole stream.
+
+    Designed to be unit-testable in isolation — it has no LLM or
+    HTTP dependencies.
+    """
+
+    def __init__(self, valid_ids: set[str]) -> None:
+        self._valid_ids = valid_ids
+        self._buffer: list[str] = []
+        self._buffer_len = 0
+        self._scan_from = 0
+        self._seen: set[str] = set()
+        self._ordered: list[str] = []
+
+    def feed(self, delta: str) -> list[CitationFound]:
+        """Append ``delta`` and return any newly-found citations."""
+        if not delta:
+            return []
+        self._buffer.append(delta)
+        self._buffer_len += len(delta)
+        text = self.text
+        results: list[CitationFound] = []
+        last_end = self._scan_from
+        for match in _CITATION_BRACKET_RE.finditer(text, self._scan_from):
+            contents = match.group(1)
+            for fragment in contents.split(","):
+                cid = fragment.strip()
+                if not _CITATION_FRAGMENT_RE.match(cid):
+                    continue
+                cid = cid.lower()
+                if cid in self._valid_ids and cid not in self._seen:
+                    self._seen.add(cid)
+                    self._ordered.append(cid)
+                    results.append(CitationFound(id=cid, position=match.end()))
+            last_end = match.end()
+        self._scan_from = last_end
+        return results
+
+    @property
+    def text(self) -> str:
+        return "".join(self._buffer)
+
+    @property
+    def citations(self) -> list[str]:
+        return list(self._ordered)
+
+
 class AnswerService:
     """Production answer service.
 
@@ -243,5 +317,118 @@ class AnswerService:
             ),
         )
 
+    async def stream_answer(  # noqa: PLR0915
+        self,
+        request: AnswerRequest,
+    ) -> AsyncIterator[RetrievalDoneEvent | TokenEvent | CitationEvent | DoneEvent | ErrorEvent]:
+        """Stream retrieval + LLM as SSE events.
 
-__all__ = ["AnswerService", "SYSTEM_PROMPT", "build_system_prompt"]
+        See :func:`src.answer.protocol.AnswerServiceProtocol.stream_answer`
+        for the wire contract. Implementation mirrors :meth:`answer`
+        for the retrieval-and-prompt setup and diverges at the LLM call,
+        where it iterates :meth:`AsyncOpenRouterLLM.stream` and emits
+        ``token`` events as deltas arrive.
+        """
+        wall_start = time.perf_counter()
+
+        effective_style: AnswerStyle = (
+            request.style if request.style is not None else self._settings.answer_default_style
+        )
+
+        retrieval_request = QueryRequest(
+            query=request.query,
+            top_k=request.top_k,
+            expand_pali=request.expand_pali,
+            forbidden_works=request.forbidden_works,
+        )
+        retrieval_start = time.perf_counter()
+        try:
+            rag_response = await self._rag.query(retrieval_request)
+        except Exception as exc:  # pragma: no cover — defensive
+            logger.exception("stream_answer.retrieval_failed")
+            yield ErrorEvent(code="retrieval_failed", message=str(exc))
+            return
+        retrieval_latency_ms = (time.perf_counter() - retrieval_start) * 1000.0
+
+        sources = list(rag_response.sources)
+        yield RetrievalDoneEvent(
+            sources=sources,
+            retrieval_latency_ms=retrieval_latency_ms,
+            pipeline_version=rag_response.metadata.version,
+        )
+
+        if not sources:
+            # No retrieval hits → skip LLM, return empty answer.
+            total_latency_ms = (time.perf_counter() - wall_start) * 1000.0
+            yield DoneEvent(
+                answer="",
+                citations=[],
+                latency_ms=total_latency_ms,
+                llm_latency_ms=0.0,
+                metadata=AnswerMetadata(
+                    pipeline_version=rag_response.metadata.version,
+                    llm_model=self._llm.default_model,
+                    llm_tokens_in=0,
+                    llm_tokens_out=0,
+                    style=effective_style,
+                    retrieval_metadata=rag_response.metadata,
+                ),
+            )
+            return
+
+        source_ids = {s.work_canonical_id.lower() for s in sources}
+        scanner = IncrementalCitationScanner(source_ids)
+        user_message = _build_user_message(request.query, sources)
+        llm_start = time.perf_counter()
+        llm_model = self._llm.default_model
+        tokens_in = 0
+        tokens_out = 0
+
+        try:
+            async for chunk in self._llm.stream(
+                system_prompt=build_system_prompt(effective_style),
+                user_message=user_message,
+                model=request.model,
+                max_tokens=_MAX_TOKENS_BY_STYLE[effective_style],
+            ):
+                if chunk.delta:
+                    yield TokenEvent(delta=chunk.delta)
+                    for found in scanner.feed(chunk.delta):
+                        yield CitationEvent(id=found.id, position=found.position)
+                if chunk.tokens_in is not None:
+                    tokens_in = chunk.tokens_in
+                if chunk.tokens_out is not None:
+                    tokens_out = chunk.tokens_out
+                if chunk.model is not None:
+                    llm_model = chunk.model
+        except Exception as exc:
+            logger.exception("stream_answer.llm_failed")
+            yield ErrorEvent(code="llm_failed", message=str(exc))
+            return
+
+        llm_latency_ms = (time.perf_counter() - llm_start) * 1000.0
+        total_latency_ms = (time.perf_counter() - wall_start) * 1000.0
+
+        yield DoneEvent(
+            answer=scanner.text,
+            citations=scanner.citations,
+            latency_ms=total_latency_ms,
+            llm_latency_ms=llm_latency_ms,
+            metadata=AnswerMetadata(
+                pipeline_version=rag_response.metadata.version,
+                llm_model=llm_model,
+                llm_tokens_in=tokens_in,
+                llm_tokens_out=tokens_out,
+                style=effective_style,
+                retrieval_metadata=rag_response.metadata,
+            ),
+        )
+
+
+__all__ = [
+    "AnswerService",
+    "CitationFound",
+    "IncrementalCitationScanner",
+    "SYSTEM_PROMPT",
+    "build_system_prompt",
+]
