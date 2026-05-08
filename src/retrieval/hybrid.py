@@ -43,7 +43,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections.abc import Hashable, Sequence
+from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -68,6 +68,14 @@ tracer = trace.get_tracer(__name__)
 # reranker plenty of recall while keeping cross-encoder forward passes
 # bounded for ~50-150 ms of GPU time.
 DEFAULT_PER_CHANNEL_LIMIT: int = 30
+# Wider pool used when post-fusion boost is active (rag-day-28). The
+# foundational suttas we want to lift can sit at rrf_rank #80-150 in
+# definitional queries (per QA040 Phase A1 — limit=200 needed to see
+# mn10 at all). 100 strikes the balance: enough headroom for boost to
+# rescue most foundational works, while bounded so enrich JOIN cost
+# doesn't blow up. The reranker still uses ``per_channel_limit`` (30)
+# because BGE-reranker scoring on 100 candidates is too slow.
+DEFAULT_BOOST_POOL_LIMIT: int = 100
 DEFAULT_TOP_K: int = 8
 # Day-17 A/B showed BGE-reranker-v2-m3 *degrades* quality on context-
 # prefixed embeddings (the dharma_v2 winner). Default flipped from True
@@ -141,6 +149,8 @@ async def hybrid_search(
     rerank: bool = DEFAULT_RERANK,
     collection_name: str = COLLECTION_NAME,
     expand_parents: bool = DEFAULT_EXPAND_PARENTS,
+    bm25_query: str | None = None,
+    apply_post_fusion_boost: Callable[[list[HybridHit]], list[HybridHit]] | None = None,
 ) -> tuple[list[HybridHit], HybridSearchTimings]:
     """Run all stages for ``query`` and return fused/enriched/(reranked) hits.
 
@@ -205,24 +215,38 @@ async def hybrid_search(
     # ------------------------------------------------------------------
     # Stage 2 — three channels in parallel
     # ------------------------------------------------------------------
+    # Per-channel pool size also widens when boost is active — each
+    # channel must return enough candidates for foundational suttas
+    # to appear before fusion (rag-day-28).
+    effective_channel_limit = (
+        max(per_channel_limit, DEFAULT_BOOST_POOL_LIMIT)
+        if apply_post_fusion_boost is not None
+        else per_channel_limit
+    )
     t_channels = time.perf_counter()
     with tracer.start_as_current_span("hybrid.channels") as channels_span:
-        channels_span.set_attribute("hybrid.per_channel_limit", per_channel_limit)
+        channels_span.set_attribute("hybrid.per_channel_limit", effective_channel_limit)
         dense_task = asyncio.to_thread(
             dense.dense_search,
             qdrant_client,
             dense_vec,
             collection=collection_name,
-            limit=per_channel_limit,
+            limit=effective_channel_limit,
         )
         sparse_task = asyncio.to_thread(
             sparse.sparse_search,
             qdrant_client,
             sparse_weights,
             collection=collection_name,
-            limit=per_channel_limit,
+            limit=effective_channel_limit,
         )
-        bm25_task = bm25.search(db_session, query, limit=per_channel_limit)
+        # BM25 deliberately receives the *un-expanded* query (rag-day-28).
+        # Postgres FTS keeps precision on a tight, raw term — feeding the
+        # gloss-template would dilute it with noise words like
+        # "Discourse on" / "Foundations of". ``bm25_query`` lets the
+        # caller hand a pre-Pāli-expansion form when desired (currently
+        # the same string for stub/test paths).
+        bm25_task = bm25.search(db_session, bm25_query or query, limit=effective_channel_limit)
         dense_hits, sparse_hits, bm25_hits = await asyncio.gather(
             dense_task, sparse_task, bm25_task
         )
@@ -237,7 +261,20 @@ async def hybrid_search(
     # "return top_k", so truncate now.
     # ------------------------------------------------------------------
     t_fusion = time.perf_counter()
-    rrf_limit = per_channel_limit if rerank else top_k
+    # Pool sizing:
+    # * rerank=False, no boost → truncate to ``top_k`` (cheap path).
+    # * rerank=True            → ``per_channel_limit`` (30 default — feeds
+    #                            cross-encoder, larger is too slow).
+    # * boost on (rag-day-28)  → ``DEFAULT_BOOST_POOL_LIMIT`` (100) — needed
+    #                            because foundational suttas can sit at
+    #                            rrf_rank #80-150 on definitional queries
+    #                            (per QA040 Phase A1).
+    if apply_post_fusion_boost is not None:
+        rrf_limit = max(per_channel_limit, DEFAULT_BOOST_POOL_LIMIT)
+    elif rerank:
+        rrf_limit = per_channel_limit
+    else:
+        rrf_limit = top_k
     with tracer.start_as_current_span("hybrid.rrf") as rrf_span:
         rrf_span.set_attribute("hybrid.rrf.k", rrf_k)
         rrf_span.set_attribute("hybrid.rrf.limit", rrf_limit)
@@ -263,6 +300,26 @@ async def hybrid_search(
         enrich_span.set_attribute("hybrid.expand_parents", expand_parents)
         enriched = await _enrich(db_session, fused, expand_parents=expand_parents)
     enrich_s = time.perf_counter() - t_enrich
+
+    # ------------------------------------------------------------------
+    # Stage 4.5 — Optional foundational boost (rag-day-28).
+    # Post-RRF score multiplier for canonical works of curated terms
+    # (data/glossary/foundational.yaml). Wired as a callable so this
+    # module stays agnostic of glossary semantics — the closure
+    # captures the matcher and query upstream.
+    # Applied *before* rerank so the reranker sees the boosted top
+    # candidate pool. On rerank=False this also affects final ranking.
+    # ------------------------------------------------------------------
+    if apply_post_fusion_boost is not None and enriched:
+        with tracer.start_as_current_span("hybrid.foundational_boost") as boost_span:
+            boost_span.set_attribute("hybrid.foundational.before", len(enriched))
+            enriched = apply_post_fusion_boost(enriched)
+            boost_span.set_attribute("hybrid.foundational.after", len(enriched))
+        # If we widened the pool only for boost (no reranker), trim
+        # back to top_k now — non-rerank path expects ``enriched[:top_k]``
+        # downstream and wide pool would inflate the response.
+        if not rerank:
+            enriched = enriched[:top_k]
 
     # ------------------------------------------------------------------
     # Stage 5 — Reranker. Optional. Reorders ``enriched`` by a

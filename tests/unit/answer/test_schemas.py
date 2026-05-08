@@ -60,6 +60,7 @@ class TestAnswerRequest:
 class TestAnswerResponse:
     def _meta(self) -> AnswerMetadata:
         return AnswerMetadata(
+            trace_id="f47ac10b-58cc-4372-a567-0e02b2c3d479",
             pipeline_version="dharma_v2-rerank0-parents1-pali1",
             llm_model="openrouter/anthropic/claude-haiku-4.5",
             llm_tokens_in=120,

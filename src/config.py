@@ -113,6 +113,21 @@ class Settings(BaseSettings):
     # Net: strictly-or-better outcome on both eval sets.
     glossary_expand_pali_default: bool = Field(default=True)
 
+    # --- Definitional query expansion + foundational boost (rag-day-28) ---
+    # Both close recommendations 1+2 from docs/QA040_INVESTIGATION.md.
+    # Definitional expansion: detect "what is X?" / "что такое X?" and
+    # rewrite into a longer gloss-shaped template before encode.
+    # Foundational boost: post-RRF score multiplier for canonical works
+    # of curated terms (data/glossary/foundational.yaml).
+    # Both default ``True`` — they only fire when patterns/terms match,
+    # so the no-op cost on non-definitional queries is microsecond-level
+    # regex scans + a single dict lookup.
+    glossary_expand_definitional_default: bool = Field(default=True)
+    glossary_foundational_boost_default: bool = Field(default=True)
+    # Default boost factor applied when a curated entry omits its own
+    # ``boost`` field. Tunable for sensitivity sweeps on golden set.
+    glossary_foundational_boost_factor: float = Field(default=1.5, gt=1.0, le=5.0)
+
     # --- RAG backend selection (app-day-02) ---
     # ``stub`` returns hardcoded fixture sources in ~1 ms and needs no
     # GPU / Qdrant / Postgres — ideal for frontend dev and CI smoke

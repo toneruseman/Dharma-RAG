@@ -39,9 +39,15 @@
             ],
             "title": "Style",
             "type": "string"
+          },
+          "trace_id": {
+            "description": "UUID4 identifying this single request/response. Generated server-side and propagated through structlog context, Phoenix spans, and the response payload. Used as the primary key for ``POST /api/feedback`` so a client can attach 👍/👎 to a specific answer.",
+            "title": "Trace Id",
+            "type": "string"
           }
         },
         "required": [
+          "trace_id",
           "pipeline_version",
           "llm_model",
           "llm_tokens_in",
@@ -55,6 +61,18 @@
       "AnswerRequest": {
         "description": "Body of POST /api/answer.",
         "properties": {
+          "expand_definitional": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Forwarded to retrieval. Override definitional query expansion (rag-day-28). ``None`` defers to server default.",
+            "title": "Expand Definitional"
+          },
           "expand_pali": {
             "anyOf": [
               {
@@ -81,6 +99,18 @@
             ],
             "description": "Forwarded to retrieval. Drops sources whose ``work_canonical_id`` appears in this list before they reach the LLM.",
             "title": "Forbidden Works"
+          },
+          "foundational_boost": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Forwarded to retrieval. Override foundational mapping boost (rag-day-28). ``None`` defers to server default.",
+            "title": "Foundational Boost"
           },
           "model": {
             "anyOf": [
@@ -194,6 +224,129 @@
         "title": "AnswerResponse",
         "type": "object"
       },
+      "AnswerSnapshot": {
+        "description": "Fields of the rated answer that we persist alongside the vote.\n\nAll fields are required so review through ``psql`` doesn't need a\njoin — see ``docs/concepts/23-feedback-widget.md`` section \"Схема\nтаблицы\". Mirrors the subset of ``AnswerMetadata`` + ``query`` /\n``answer`` text that the frontend already has after a successful\nanswer.",
+        "properties": {
+          "answer_text": {
+            "maxLength": 20000,
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "latency_ms": {
+            "minimum": 0.0,
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "llm_model": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Llm Model",
+            "type": "string"
+          },
+          "llm_tokens_in": {
+            "minimum": 0.0,
+            "title": "Llm Tokens In",
+            "type": "integer"
+          },
+          "llm_tokens_out": {
+            "minimum": 0.0,
+            "title": "Llm Tokens Out",
+            "type": "integer"
+          },
+          "pipeline_version": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Pipeline Version",
+            "type": "string"
+          },
+          "query_text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query Text",
+            "type": "string"
+          },
+          "style": {
+            "enum": [
+              "auto",
+              "concise",
+              "detailed"
+            ],
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_text",
+          "answer_text",
+          "pipeline_version",
+          "llm_model",
+          "style",
+          "latency_ms",
+          "llm_tokens_in",
+          "llm_tokens_out"
+        ],
+        "title": "AnswerSnapshot",
+        "type": "object"
+      },
+      "FeedbackRequest": {
+        "description": "Body of POST /api/feedback.",
+        "properties": {
+          "answer_snapshot": {
+            "$ref": "#/components/schemas/AnswerSnapshot",
+            "description": "Echo of the rated answer's metadata so the row is self-contained (no audit_log join). Removed once audit_log exists (app-day-49)."
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional free-text comment (≤2000 chars). Guards against megabyte-sized rants without restricting genuine feedback.",
+            "title": "Comment"
+          },
+          "thumb": {
+            "description": "``+1`` for 👍 (helpful), ``-1`` for 👎 (not helpful). No neutral.",
+            "enum": [
+              1,
+              -1
+            ],
+            "title": "Thumb",
+            "type": "integer"
+          },
+          "trace_id": {
+            "description": "UUID4 of the answer being rated. Comes from ``AnswerMetadata.trace_id`` in the prior /api/answer or /api/answer/stream response.",
+            "format": "uuid",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trace_id",
+          "thumb",
+          "answer_snapshot"
+        ],
+        "title": "FeedbackRequest",
+        "type": "object"
+      },
+      "FeedbackResponse": {
+        "description": "Body of the response from POST /api/feedback.",
+        "properties": {
+          "saved": {
+            "description": "Always ``true`` on a 2xx — operation is idempotent (upsert). Reserved as a non-trivial field so the response stays a JSON object even after future additions (e.g. ``echo_id``).",
+            "title": "Saved",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "saved"
+        ],
+        "title": "FeedbackResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -249,6 +402,12 @@
             "title": "Collection",
             "type": "string"
           },
+          "expand_definitional": {
+            "default": false,
+            "description": "Whether the definitional template (rag-day-28) actually rewrote the query. ``True`` only when the regexp matched and a longer gloss was substituted — distinct from the toggle being on but no pattern matching.",
+            "title": "Expand Definitional",
+            "type": "boolean"
+          },
           "expand_pali": {
             "description": "Whether the query was rewritten via the Pāli glossary (rag-day-23) before encoding. ``False`` when either disabled by setting/request or when no glossary terms matched the query — the metadata field tracks the *effective* expansion, not just the toggle.",
             "title": "Expand Pali",
@@ -257,6 +416,12 @@
           "expand_parents": {
             "description": "Whether parent expansion (small-to-big) was applied.",
             "title": "Expand Parents",
+            "type": "boolean"
+          },
+          "foundational_boost": {
+            "default": false,
+            "description": "Whether the foundational mapping (rag-day-28) actually boosted at least one work for this query. ``True`` only when a curated term/alias was found and its work appeared in the candidate pool.",
+            "title": "Foundational Boost",
             "type": "boolean"
           },
           "n_candidates": {
@@ -290,6 +455,18 @@
       "QueryRequest": {
         "description": "Body of POST /api/query.",
         "properties": {
+          "expand_definitional": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Override definitional query expansion (rag-day-28). ``None`` (default) defers to the server-side setting ``glossary_expand_definitional_default``. ``True`` detects 'what is X?' / 'что такое X?' patterns and rewrites them into a longer gloss template before encode (closes the QA040 satipaṭṭhāna anomaly). ``False`` skips the rewrite for A/B debugging.",
+            "title": "Expand Definitional"
+          },
           "expand_pali": {
             "anyOf": [
               {
@@ -316,6 +493,18 @@
             ],
             "description": "Optional post-filter: drop hits whose ``work_canonical_id`` appears in this list. Use for per-tenant content policy (e.g. excluding texts a community considers sensitive). Filtering is post-RRF — ``top_k`` is honoured after the filter, so requests with a long forbidden list may return fewer than ``top_k`` sources.",
             "title": "Forbidden Works"
+          },
+          "foundational_boost": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Override foundational mapping boost (rag-day-28). ``None`` (default) defers to ``glossary_foundational_boost_default``. ``True`` applies a post-RRF score multiplier to canonical works of curated terms (data/glossary/foundational.yaml — e.g. dukkha → sn56.11). ``False`` disables the boost while keeping definitional expansion if enabled.",
+            "title": "Foundational Boost"
           },
           "language": {
             "anyOf": [
@@ -432,6 +621,156 @@
         "title": "Source",
         "type": "object"
       },
+      "SourceDocument": {
+        "description": "Full document body for the Reading Room.\n\nShape mirrors what a reader needs: identity (``canonical_id`` /\n``title`` / ``title_pali``), provenance (``translation``), and\nbody (``paragraphs`` in document order). Diagnostic retrieval\nfields are intentionally absent — this isn't a search response.",
+        "properties": {
+          "canonical_id": {
+            "description": "Stable canonical ID like ``mn10`` (echoes the path parameter).",
+            "title": "Canonical Id",
+            "type": "string"
+          },
+          "is_restricted": {
+            "default": false,
+            "description": "Vajrayana / tantric works flagged as requiring initiation. When ``True`` the frontend should gate the body behind a consent screen (Phase 5).",
+            "title": "Is Restricted",
+            "type": "boolean"
+          },
+          "paragraphs": {
+            "description": "Document body — parent-chunks in document order. Empty list is theoretically possible (work with no ingested instance) but caller should treat it as an error condition.",
+            "items": {
+              "$ref": "#/components/schemas/SourceParagraph"
+            },
+            "title": "Paragraphs",
+            "type": "array"
+          },
+          "title": {
+            "description": "Canonical title of the work.",
+            "title": "Title",
+            "type": "string"
+          },
+          "title_pali": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pāli title with diacritics when known (e.g. ``Satipaṭṭhāna Sutta``). Useful to display alongside an English translation.",
+            "title": "Title Pali"
+          },
+          "tradition_code": {
+            "description": "Tradition tag from ``tradition_t`` (``theravada``, ``mahayana``…).",
+            "title": "Tradition Code",
+            "type": "string"
+          },
+          "translation": {
+            "$ref": "#/components/schemas/SourceTranslation",
+            "description": "Metadata for the translation chosen by the server."
+          }
+        },
+        "required": [
+          "canonical_id",
+          "title",
+          "tradition_code",
+          "translation",
+          "paragraphs"
+        ],
+        "title": "SourceDocument",
+        "type": "object"
+      },
+      "SourceParagraph": {
+        "description": "A single ordered paragraph (parent-chunk) of the document.",
+        "properties": {
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SuttaCentral-style identifier when present (e.g. ``mn10:12.3``). Used for deep-linking from search results to the matching paragraph.",
+            "title": "Segment Id"
+          },
+          "sequence": {
+            "description": "Position in the document (0-based, document order).",
+            "minimum": 0.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "text": {
+            "description": "Paragraph body — parent-chunk text, ~1024-2048 tokens.",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sequence",
+          "text"
+        ],
+        "title": "SourceParagraph",
+        "type": "object"
+      },
+      "SourceTranslation": {
+        "description": "Provenance metadata for the rendered translation.",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Translator's display name when known (e.g. ``Bhikkhu Sujato``). May be ``None`` for anonymous or compiler editions.",
+            "title": "Author"
+          },
+          "language_code": {
+            "description": "Language code as stored in the corpus, typically ISO 639-3 (``eng``, ``rus``, ``pli``). Stub returns ``en``-style codes for fixture readability — frontend should accept either.",
+            "title": "Language Code",
+            "type": "string"
+          },
+          "license": {
+            "description": "SPDX-like license tag (``CC0``, ``CC-BY-4.0``, ``CC-BY-NC-4.0``, ``ARR``…). Always set — corpus invariant.",
+            "title": "License",
+            "type": "string"
+          },
+          "publication_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Year of publication when known.",
+            "title": "Publication Year"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Translation-specific title, may differ from the work's canonical title (e.g. ``The Establishings of Mindfulness`` for ``mn10``).",
+            "title": "Title"
+          }
+        },
+        "required": [
+          "language_code",
+          "license"
+        ],
+        "title": "SourceTranslation",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -522,6 +861,87 @@
         ]
       }
     },
+    "/api/answer/stream": {
+      "post": {
+        "operationId": "answer_stream_api_answer_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {}
+            },
+            "description": "An ``text/event-stream`` connection. Each event is one of: ``retrieval_done``, ``token``, ``citation``, ``done``, ``error``. See :mod:`src.answer.stream_schemas` for payloads."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "LLM-grounded answer streamed as Server-Sent Events",
+        "tags": [
+          "answer"
+        ]
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "operationId": "submit_feedback_api_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record a 👍/👎 vote on a previous answer",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/query": {
       "post": {
         "operationId": "query_api_query_post",
@@ -560,6 +980,58 @@
         "summary": "Stable production retrieval — top-k source passages",
         "tags": [
           "query"
+        ]
+      }
+    },
+    "/api/sources/{canonical_id}": {
+      "get": {
+        "operationId": "get_source_api_sources__canonical_id__get",
+        "parameters": [
+          {
+            "description": "Canonical work ID (e.g. ``mn10``, ``sn56.11``, ``dn22``).",
+            "in": "path",
+            "name": "canonical_id",
+            "required": true,
+            "schema": {
+              "description": "Canonical work ID (e.g. ``mn10``, ``sn56.11``, ``dn22``).",
+              "examples": [
+                "mn10"
+              ],
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Canonical Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Work not found in the corpus."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Full document body for the Reading Room",
+        "tags": [
+          "sources"
         ]
       }
     },

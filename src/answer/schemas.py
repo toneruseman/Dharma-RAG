@@ -63,6 +63,20 @@ class AnswerRequest(BaseModel):
             "side-by-side debugging on the same question."
         ),
     )
+    expand_definitional: bool | None = Field(
+        default=None,
+        description=(
+            "Forwarded to retrieval. Override definitional query "
+            "expansion (rag-day-28). ``None`` defers to server default."
+        ),
+    )
+    foundational_boost: bool | None = Field(
+        default=None,
+        description=(
+            "Forwarded to retrieval. Override foundational mapping "
+            "boost (rag-day-28). ``None`` defers to server default."
+        ),
+    )
     forbidden_works: list[str] | None = Field(
         default=None,
         description=(
@@ -94,6 +108,16 @@ class AnswerRequest(BaseModel):
 class AnswerMetadata(BaseModel):
     """Diagnostic metadata for an answer call."""
 
+    trace_id: str = Field(
+        ...,
+        description=(
+            "UUID4 identifying this single request/response. Generated "
+            "server-side and propagated through structlog context, Phoenix "
+            "spans, and the response payload. Used as the primary key for "
+            "``POST /api/feedback`` so a client can attach 👍/👎 to a "
+            "specific answer."
+        ),
+    )
     pipeline_version: str = Field(
         ...,
         description=(

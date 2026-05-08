@@ -67,6 +67,30 @@ class QueryRequest(BaseModel):
             "for debugging an unexpected hit set."
         ),
     )
+    expand_definitional: bool | None = Field(
+        default=None,
+        description=(
+            "Override definitional query expansion (rag-day-28). "
+            "``None`` (default) defers to the server-side setting "
+            "``glossary_expand_definitional_default``. ``True`` detects "
+            "'what is X?' / 'что такое X?' patterns and rewrites them "
+            "into a longer gloss template before encode (closes the "
+            "QA040 satipaṭṭhāna anomaly). ``False`` skips the rewrite "
+            "for A/B debugging."
+        ),
+    )
+    foundational_boost: bool | None = Field(
+        default=None,
+        description=(
+            "Override foundational mapping boost (rag-day-28). "
+            "``None`` (default) defers to "
+            "``glossary_foundational_boost_default``. ``True`` applies "
+            "a post-RRF score multiplier to canonical works of curated "
+            "terms (data/glossary/foundational.yaml — e.g. dukkha → "
+            "sn56.11). ``False`` disables the boost while keeping "
+            "definitional expansion if enabled."
+        ),
+    )
 
 
 class Source(BaseModel):
@@ -151,6 +175,24 @@ class PipelineMetadata(BaseModel):
             "*effective* expansion, not just the toggle."
         ),
     )
+    expand_definitional: bool = Field(
+        default=False,
+        description=(
+            "Whether the definitional template (rag-day-28) actually "
+            "rewrote the query. ``True`` only when the regexp matched "
+            "and a longer gloss was substituted — distinct from the "
+            "toggle being on but no pattern matching."
+        ),
+    )
+    foundational_boost: bool = Field(
+        default=False,
+        description=(
+            "Whether the foundational mapping (rag-day-28) actually "
+            "boosted at least one work for this query. ``True`` only "
+            "when a curated term/alias was found and its work appeared "
+            "in the candidate pool."
+        ),
+    )
     n_candidates: int = Field(
         ..., ge=0, description="RRF candidate pool size before truncation to ``top_k``."
     )
@@ -170,3 +212,109 @@ class QueryResponse(BaseModel):
     )
     latency_ms: float = Field(..., description="End-to-end wall-clock time in milliseconds.")
     metadata: PipelineMetadata
+
+
+# --------------------------------------------------------------------- #
+# GET /api/sources/{canonical_id} — Reading Room (app-day-21).
+#
+# Different shape from QueryResponse: instead of top-k passages ranked
+# by relevance, we return the *full* document for a single work.
+# Drives the `/read/[uid]` Next.js page; not part of the retrieval flow.
+# --------------------------------------------------------------------- #
+
+
+class SourceParagraph(BaseModel):
+    """A single ordered paragraph (parent-chunk) of the document."""
+
+    sequence: int = Field(
+        ..., ge=0, description="Position in the document (0-based, document order)."
+    )
+    segment_id: str | None = Field(
+        default=None,
+        description=(
+            "SuttaCentral-style identifier when present (e.g. ``mn10:12.3``). "
+            "Used for deep-linking from search results to the matching paragraph."
+        ),
+    )
+    text: str = Field(..., description="Paragraph body — parent-chunk text, ~1024-2048 tokens.")
+
+
+class SourceTranslation(BaseModel):
+    """Provenance metadata for the rendered translation."""
+
+    author: str | None = Field(
+        default=None,
+        description=(
+            "Translator's display name when known (e.g. ``Bhikkhu Sujato``). "
+            "May be ``None`` for anonymous or compiler editions."
+        ),
+    )
+    language_code: str = Field(
+        ...,
+        description=(
+            "Language code as stored in the corpus, typically ISO 639-3 "
+            "(``eng``, ``rus``, ``pli``). Stub returns ``en``-style codes "
+            "for fixture readability — frontend should accept either."
+        ),
+    )
+    title: str | None = Field(
+        default=None,
+        description=(
+            "Translation-specific title, may differ from the work's canonical "
+            "title (e.g. ``The Establishings of Mindfulness`` for ``mn10``)."
+        ),
+    )
+    publication_year: int | None = Field(
+        default=None, description="Year of publication when known."
+    )
+    license: str = Field(
+        ...,
+        description=(
+            "SPDX-like license tag (``CC0``, ``CC-BY-4.0``, "
+            "``CC-BY-NC-4.0``, ``ARR``…). Always set — corpus invariant."
+        ),
+    )
+
+
+class SourceDocument(BaseModel):
+    """Full document body for the Reading Room.
+
+    Shape mirrors what a reader needs: identity (``canonical_id`` /
+    ``title`` / ``title_pali``), provenance (``translation``), and
+    body (``paragraphs`` in document order). Diagnostic retrieval
+    fields are intentionally absent — this isn't a search response.
+    """
+
+    canonical_id: str = Field(
+        ..., description="Stable canonical ID like ``mn10`` (echoes the path parameter)."
+    )
+    title: str = Field(..., description="Canonical title of the work.")
+    title_pali: str | None = Field(
+        default=None,
+        description=(
+            "Pāli title with diacritics when known (e.g. ``Satipaṭṭhāna Sutta``). "
+            "Useful to display alongside an English translation."
+        ),
+    )
+    tradition_code: str = Field(
+        ..., description="Tradition tag from ``tradition_t`` (``theravada``, ``mahayana``…)."
+    )
+    is_restricted: bool = Field(
+        default=False,
+        description=(
+            "Vajrayana / tantric works flagged as requiring initiation. "
+            "When ``True`` the frontend should gate the body behind a "
+            "consent screen (Phase 5)."
+        ),
+    )
+    translation: SourceTranslation = Field(
+        ..., description="Metadata for the translation chosen by the server."
+    )
+    paragraphs: list[SourceParagraph] = Field(
+        ...,
+        description=(
+            "Document body — parent-chunks in document order. Empty list "
+            "is theoretically possible (work with no ingested instance) "
+            "but caller should treat it as an error condition."
+        ),
+    )

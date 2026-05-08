@@ -18,7 +18,7 @@ thin module per use-case keeps each one obvious.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -42,6 +42,33 @@ class LLMResult:
 
     model: str
     """OpenRouter model identifier that produced the result."""
+
+
+@dataclass(frozen=True, slots=True)
+class StreamChunk:
+    """One delta from the streaming LLM response.
+
+    Most chunks carry only ``delta``; the *final* chunk (fired after the
+    upstream provider sends ``finish_reason``) carries the usage info
+    and ``finish_reason`` instead — its ``delta`` is empty. Consumers
+    that just care about the text concatenate ``delta`` across all
+    chunks; consumers that care about totals look at the last one.
+    """
+
+    delta: str
+    """Incremental text fragment. Empty on the terminal usage chunk."""
+
+    finish_reason: str | None = None
+    """Set on the terminal chunk only (``"stop"`` / ``"length"`` / ...)."""
+
+    tokens_in: int | None = None
+    """Set on the terminal chunk only."""
+
+    tokens_out: int | None = None
+    """Set on the terminal chunk only."""
+
+    model: str | None = None
+    """Set on the terminal chunk only — matches :class:`LLMResult.model`."""
 
 
 class AsyncOpenRouterLLM:
@@ -130,6 +157,70 @@ class AsyncOpenRouterLLM:
             model=f"openrouter/{chosen_model}",
         )
 
+    async def stream(
+        self,
+        *,
+        system_prompt: str,
+        user_message: str,
+        model: str | None = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.2,
+    ) -> AsyncIterator[StreamChunk]:
+        """Stream the chat-completion call as :class:`StreamChunk` deltas.
+
+        Pass-through over ``chat.completions.create(stream=True, ...)``
+        plus ``stream_options={"include_usage": True}`` so OpenRouter
+        forwards the final ``usage`` block to upstream providers and we
+        can populate token counts on the terminal chunk.
+
+        Yields one chunk per upstream delta. Yields a final chunk with
+        ``delta=""`` and the usage / model / finish_reason populated.
+        Empty deltas (keep-alive heartbeats, leading whitespace stripping)
+        are dropped — consumers don't need to filter.
+        """
+        client = self._ensure_client()
+        chosen_model = model or self._default_model
+
+        stream = await client.chat.completions.create(
+            model=chosen_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stream=True,
+            stream_options={"include_usage": True},
+        )
+
+        finish_reason: str | None = None
+        tokens_in: int | None = None
+        tokens_out: int | None = None
+
+        async for chunk in stream:
+            choices = getattr(chunk, "choices", None) or []
+            if choices:
+                choice = choices[0]
+                delta_obj = getattr(choice, "delta", None)
+                content = getattr(delta_obj, "content", None) if delta_obj else None
+                if content:
+                    yield StreamChunk(delta=content)
+                fin = getattr(choice, "finish_reason", None)
+                if fin:
+                    finish_reason = fin
+            usage = getattr(chunk, "usage", None)
+            if usage is not None:
+                tokens_in = int(getattr(usage, "prompt_tokens", 0) or 0)
+                tokens_out = int(getattr(usage, "completion_tokens", 0) or 0)
+
+        yield StreamChunk(
+            delta="",
+            finish_reason=finish_reason,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            model=f"openrouter/{chosen_model}",
+        )
+
     def _ensure_client(self) -> Any:
         """Lazy-construct the underlying ``AsyncOpenAI`` client."""
         if self._client is not None:
@@ -185,4 +276,5 @@ __all__ = [
     "AsyncOpenRouterLLM",
     "DEFAULT_OPENROUTER_BASE_URL",
     "LLMResult",
+    "StreamChunk",
 ]

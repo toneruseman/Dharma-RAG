@@ -1,0 +1,210 @@
+# Curated foundational mapping (rag-day-28).
+#
+# Source: Sahaya (buddhistcompanion.com) 12 essential suttas + selected
+# topical guides + MN 10 "If this landed" cross-refs, supplemented with
+# six high-frequency definitional terms from QA040_INVESTIGATION
+# (vipassana, jhana, right view, kamma, nibbana, five precepts).
+#
+# Used by `src/expand/foundational.py` to detect when a user query
+# names a canonical Buddhist term and to apply a post-RRF boost on
+# the foundational sutta(s) for that term, lifting them above
+# derivative texts that share the term's surface form.
+#
+# Why per-entry boost varies: 1.5 for single-sutta canonical
+# first-source (e.g. SN 56.11 for the Four Noble Truths); 1.4 for
+# multi-work or supplementary terms where the boost should not
+# fully dominate organic ranking.
+#
+# Curation backlog (B-001, buddhologist): expand to 30-50 pairs,
+# verify aliases for Russian translations, add edge cases (e.g.
+# saṃyojana, indriya, bojjhaṅga). See docs/concepts/28-definitional-expansion.md.
+
+# === Sahaya 12 essential suttas ===
+
+- term: four noble truths
+  aliases:
+    - 4 noble truths
+    - dukkha
+    - дуккха
+    - suffering
+    - четыре благородные истины
+    - истины о страдании
+    - dhammacakkappavattana
+    - first sermon
+  works: [sn56.11]
+  boost: 1.5
+
+- term: two arrows
+  aliases:
+    - second arrow
+    - sallatha
+    - two darts
+    - две стрелы
+    - вторая стрела
+  works: [sn36.6]
+  boost: 1.5
+
+- term: anatta
+  aliases:
+    - non-self
+    - not-self
+    - анатта
+    - не-я
+    - отсутствие я
+    - anatta-lakkhana
+  works: [sn22.59]
+  boost: 1.5
+
+- term: dependent origination
+  aliases:
+    - paticcasamuppada
+    - paṭiccasamuppāda
+    - патиччасамуппада
+    - взаимозависимое возникновение
+    - dependent arising
+  works: [sn12.2]
+  boost: 1.5
+
+- term: satipaṭṭhāna
+  aliases:
+    - satipatthana
+    - сатипаттхана
+    - mindfulness foundations
+    - four foundations of mindfulness
+    - основы внимательности
+    - mahasatipatthana
+  works: [mn10, dn22]
+  boost: 1.5
+
+- term: anapanasati
+  aliases:
+    - ānāpānasati
+    - breath meditation
+    - mindfulness of breathing
+    - анапанасати
+    - медитация на дыхании
+  works: [mn118]
+  boost: 1.5
+
+- term: balanced effort
+  aliases:
+    - right effort
+    - sona
+    - sona sutta
+    - средние усилия
+    - sammā-vāyāma
+  works: [an6.55]
+  boost: 1.5
+
+- term: metta
+  aliases:
+    - mettā
+    - loving-kindness
+    - метта
+    - доброжелательность
+    - karaṇīya-mettā
+    - karaniya metta
+  works: [snp1.8]
+  boost: 1.5
+
+- term: analysis of the truths
+  aliases:
+    - saccavibhaṅga
+    - saccavibhanga
+    - analysis of the four noble truths
+    - анализ истин
+  works: [mn141]
+  boost: 1.5
+
+- term: noble eightfold path
+  aliases:
+    - eightfold path
+    - восьмеричный путь
+    - magga
+    - ariya aṭṭhaṅgika magga
+    - ariyo atthangiko maggo
+  works: [sn45.8]
+  boost: 1.5
+
+- term: lay ethics
+  aliases:
+    - sigalovada
+    - sigālovāda
+    - lay life
+    - householder ethics
+    - этика мирянина
+    - advice to sigala
+  works: [dn31]
+  boost: 1.5
+
+- term: foam similes
+  aliases:
+    - impermanence
+    - anicca
+    - аничча
+    - непостоянство
+    - phena
+    - foam
+    - simile of foam
+  works: [sn22.95]
+  boost: 1.4
+
+# === Дополнения из частых definitional-кейсов QA040 ===
+
+- term: vipassana
+  aliases:
+    - випассана
+    - insight
+    - prajna
+    - paññā
+    - прозрение
+  works: [mn10, dn22]
+  boost: 1.4
+
+- term: jhana
+  aliases:
+    - jhāna
+    - джхана
+    - meditative absorption
+    - samādhi-jhāna
+    - поглощение
+  works: [mn118, an6.55]
+  boost: 1.4
+
+- term: right view
+  aliases:
+    - sammā-diṭṭhi
+    - sammaditthi
+    - правильное воззрение
+    - mahacattarisaka
+  works: [mn117, mn41, mn9]
+  boost: 1.5
+
+- term: kamma
+  aliases:
+    - karma
+    - карма
+    - kammavipāka
+    - действие и плод
+  works: [mn135, an6.63]
+  boost: 1.4
+
+- term: nibbana
+  aliases:
+    - nirvana
+    - ниббана
+    - нирвана
+    - ending of dukkha
+    - освобождение
+  works: [sn43.14, ud8.1, ud8.3]
+  boost: 1.4
+
+- term: five precepts
+  aliases:
+    - pañca-sīla
+    - panca sila
+    - пять обетов
+    - пять предписаний
+    - five training rules
+  works: [an8.39, sn55.7]
+  boost: 1.4

@@ -30,13 +30,25 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import sqlalchemy as sa
 from qdrant_client import QdrantClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.config import Settings, get_settings
+from src.db.models.frbr import Chunk, Expression, Instance, Work
+from src.db.models.lookups import Author
 from src.embeddings.bge_m3 import BGEM3Encoder
+from src.expand import FoundationalMatcher, expand_definitional
 from src.processing.glossary import Glossary
-from src.rag.schemas import PipelineMetadata, QueryRequest, QueryResponse, Source
+from src.rag.schemas import (
+    PipelineMetadata,
+    QueryRequest,
+    QueryResponse,
+    Source,
+    SourceDocument,
+    SourceParagraph,
+    SourceTranslation,
+)
 from src.retrieval.hybrid import hybrid_search
 from src.retrieval.reranker import BGEReranker
 from src.retrieval.schemas import HybridHit
@@ -72,14 +84,19 @@ def _build_version_string(
     rerank: bool,
     expand_parents: bool,
     expand_pali: bool,
+    expand_definitional: bool,
+    foundational_boost: bool,
 ) -> str:
     """Compose the pipeline version label embedded in PipelineMetadata.
 
     Compact format chosen so logs and Phoenix span attributes stay
-    grep-able. Example: ``dharma_v2-rerank0-parents1-pali1``.
+    grep-able. Example: ``dharma_v2-rerank0-parents1-pali1-defn1-fnd1``.
     """
     return (
-        f"{collection}-rerank{int(rerank)}-parents{int(expand_parents)}" f"-pali{int(expand_pali)}"
+        f"{collection}-rerank{int(rerank)}-parents{int(expand_parents)}"
+        f"-pali{int(expand_pali)}"
+        f"-defn{int(expand_definitional)}"
+        f"-fnd{int(foundational_boost)}"
     )
 
 
@@ -111,6 +128,7 @@ class RAGService:
         session_maker: async_sessionmaker[AsyncSession],
         settings: Settings | None = None,
         glossary: Glossary | None = None,
+        foundational_matcher: FoundationalMatcher | None = None,
     ) -> None:
         self._encoder = encoder
         self._qdrant = qdrant_client
@@ -118,6 +136,7 @@ class RAGService:
         self._session_maker = session_maker
         self._settings = settings or get_settings()
         self._glossary = glossary
+        self._foundational = foundational_matcher
 
     @asynccontextmanager
     async def _session(self) -> AsyncIterator[AsyncSession]:
@@ -132,25 +151,82 @@ class RAGService:
         rerank = settings.retrieval_rerank_default
         expand_parents = settings.retrieval_expand_parents_default
 
+        # Definitional expansion (rag-day-28). Runs *before* Pāli
+        # expansion: the regex anchors on the raw user query
+        # (``^What is X?$``), and Pāli expansion would append meanings
+        # that break the anchor. Order: definitional → Pāli → encode.
+        # See docs/concepts/28-definitional-expansion.md.
+        # When the foundational matcher is loaded we also pass term
+        # aliases — bridges bare-Pāli terms to English descriptive
+        # phrases that match canonical sutta chunk text (``satipaṭṭhāna``
+        # → "four foundations of mindfulness").
+        expand_definitional_requested = (
+            request.expand_definitional
+            if request.expand_definitional is not None
+            else settings.glossary_expand_definitional_default
+        )
+        expand_definitional_effective = False
+        encoded_query = request.query
+        if expand_definitional_requested:
+            term_aliases = (
+                {e.term: list(e.aliases) for e in self._foundational.entries}
+                if self._foundational is not None
+                else None
+            )
+            after_definitional = expand_definitional(request.query, term_aliases=term_aliases)
+            if after_definitional != request.query:
+                encoded_query = after_definitional
+                expand_definitional_effective = True
+
         # Effective Pāli expansion: request override wins, else server
         # default. Skipped if no glossary is loaded — graceful fallback
         # so a missing dpd_full.json doesn't break the endpoint.
+        # Operates on the (possibly definitional-expanded) text.
         expand_pali_requested = (
             request.expand_pali
             if request.expand_pali is not None
             else settings.glossary_expand_pali_default
         )
         expand_pali_effective = False
-        encoded_query = request.query
         if expand_pali_requested and self._glossary is not None:
-            expanded = self._glossary.expand_query(request.query)
-            if expanded != request.query:
+            expanded = self._glossary.expand_query(encoded_query)
+            if expanded != encoded_query:
                 encoded_query = expanded
                 expand_pali_effective = True
+
+        # BM25 receives the *un-expanded* query so Postgres FTS keeps
+        # precision on the raw term — we only sweeten the encoder-side
+        # input. Raw user query is the safest BM25 source.
+        bm25_query = request.query
+
+        # Foundational boost (rag-day-28). Captures matcher + raw user
+        # query in a closure handed to ``hybrid_search`` for post-RRF
+        # score multiplication on canonical works of curated terms.
+        # Match runs against the *original* user query to avoid
+        # accidental term inflation from the gloss template.
+        foundational_requested = (
+            request.foundational_boost
+            if request.foundational_boost is not None
+            else settings.glossary_foundational_boost_default
+        )
+        foundational_effective = False
+        boost_callable = None
+        if foundational_requested and self._foundational is not None:
+            match_result = self._foundational.match(request.query)
+            if match_result.boost_by_work:
+                foundational_effective = True
+                matcher_query = request.query
+
+                def _apply_boost(hits: list[HybridHit]) -> list[HybridHit]:
+                    assert self._foundational is not None  # narrowed above
+                    return self._foundational.apply_boost(hits, matcher_query)
+
+                boost_callable = _apply_boost
 
         async with self._session() as session:
             hits, _timings = await hybrid_search(
                 query=encoded_query,
+                bm25_query=bm25_query,
                 encoder=self._encoder,
                 qdrant_client=self._qdrant,
                 db_session=session,
@@ -159,6 +235,7 @@ class RAGService:
                 rerank=rerank,
                 collection_name=collection,
                 expand_parents=expand_parents,
+                apply_post_fusion_boost=boost_callable,
             )
 
         n_candidates = len(hits)
@@ -180,11 +257,111 @@ class RAGService:
                     rerank=rerank,
                     expand_parents=expand_parents,
                     expand_pali=expand_pali_effective,
+                    expand_definitional=expand_definitional_effective,
+                    foundational_boost=foundational_effective,
                 ),
                 collection=collection,
                 rerank=rerank,
                 expand_parents=expand_parents,
                 expand_pali=expand_pali_effective,
+                expand_definitional=expand_definitional_effective,
+                foundational_boost=foundational_effective,
                 n_candidates=n_candidates,
             ),
+        )
+
+    async def get_source(self, canonical_id: str) -> SourceDocument | None:
+        """Fetch the full document for ``canonical_id`` (e.g. ``mn10``).
+
+        Strategy: pick **one** translation deterministically — English
+        first (``language_code='eng'``), then by ``publication_year``
+        descending, falling back to creation order. Pick the **latest**
+        Instance of that Expression by ``retrieved_at``. Return all
+        parent-chunks of that Instance in document order.
+
+        ``None`` when the work is not in the corpus or has no ingested
+        instance yet — router maps to 404.
+        """
+        async with self._session() as session:
+            work = (
+                await session.execute(sa.select(Work).where(Work.canonical_id == canonical_id))
+            ).scalar_one_or_none()
+            if work is None:
+                return None
+
+            # English first, then most recent translation, then creation
+            # order. Joined with Author so we can render the translator
+            # name without a second round-trip.
+            row = (
+                await session.execute(
+                    sa.select(Expression, Author)
+                    .outerjoin(Author, Expression.author_id == Author.id)
+                    .where(Expression.work_id == work.id)
+                    .order_by(
+                        sa.case((Expression.language_code == "eng", 0), else_=1),
+                        Expression.publication_year.desc().nullslast(),
+                        Expression.created_at.asc(),
+                    )
+                    .limit(1)
+                )
+            ).first()
+            if row is None:
+                logger.warning(
+                    "rag.get_source.no_expression",
+                    extra={"canonical_id": canonical_id},
+                )
+                return None
+            expression, author = row
+
+            instance = (
+                await session.execute(
+                    sa.select(Instance)
+                    .where(Instance.expression_id == expression.id)
+                    .order_by(Instance.retrieved_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if instance is None:
+                logger.warning(
+                    "rag.get_source.no_instance",
+                    extra={"canonical_id": canonical_id},
+                )
+                return None
+
+            chunks = (
+                (
+                    await session.execute(
+                        sa.select(Chunk)
+                        .where(
+                            Chunk.instance_id == instance.id,
+                            Chunk.is_parent.is_(True),
+                        )
+                        .order_by(Chunk.sequence.asc())
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+        return SourceDocument(
+            canonical_id=work.canonical_id,
+            title=work.title,
+            title_pali=work.title_pali,
+            tradition_code=work.tradition_code,
+            is_restricted=work.is_restricted,
+            translation=SourceTranslation(
+                author=author.name if author is not None else None,
+                language_code=expression.language_code,
+                title=expression.title,
+                publication_year=expression.publication_year,
+                license=expression.license,
+            ),
+            paragraphs=[
+                SourceParagraph(
+                    sequence=chunk.sequence,
+                    segment_id=chunk.segment_id,
+                    text=chunk.text,
+                )
+                for chunk in chunks
+            ],
         )

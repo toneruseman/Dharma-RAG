@@ -11,6 +11,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!web/lib/
 lib64/
 parts/
 sdist/
@@ -105,6 +106,11 @@ docs/pdf/
 docs/old/pdf/
 *.pdf
 
+# Obsidian vault config — per-user settings, plugins, workspace state.
+# Vault root is `docs/`; the .obsidian/ folder there is local to whoever
+# opens the docs in Obsidian.
+docs/.obsidian/
+
 # Claude Code harness — project agents are SHARED (committed),
 # but user-local overrides and cache are personal.
 .claude/settings.local.json
@@ -129,3 +135,8 @@ data/glossary/dpd_raw/
 # scripts/compare_answer_models.py. They're useful one-off artifacts,
 # not stable references. Commit specific ones manually if needed.
 docs/MODEL_COMPARISON_*.md
+
+# Raw analysis output (rag-day-26+) — eval helpers and investigation
+# scripts dump per-run logs here for manual review. Conclusions go
+# into docs/, raw output stays local.
+tmp/

@@ -38,16 +38,33 @@
 | [15 — Answer generation (`/api/answer`)](15-answer-generation.md) | rag-day-24 | ✅ |
 | [16 — OpenAPI typegen для frontend](16-openapi-typegen.md) | app-day-03 | ✅ |
 | [17 — Базовый layout `web/`](17-base-layout.md) | app-day-04 | ✅ |
+| [18 — Reading Room MVP](18-reading-room.md) | app-day-21 | ✅ |
+| [19 — Chat MVP](19-chat-mvp.md) | app-day-22 (re-prioritised from day-38) | ✅ |
+| [20 — Hover-preview для citations](20-citation-hover-preview.md) | app-day-23 | ✅ |
+| [21 — Confidence indicator](21-confidence-indicator.md) | app-day-24 | ✅ |
+| [22 — SSE streaming](22-sse-streaming.md) | app-day-25 | ✅ |
+| [23 — Feedback widget 👍/👎](23-feedback-widget.md) | app-day-26 | ✅ |
+| [24 — Pull-quote side panel](24-pull-quote-side-panel.md) | app-day-27 | ✅ |
+| [25 — BYOK UI](25-byok-ui.md) | app-day-28 | ⏸ deferred (см. ниже) |
+| [26 — Retrieval failure analysis](26-failure-analysis.md) | rag-day-26 | ✅ |
+| [27 — qa_040 anomaly investigation](27-qa040-anomaly.md) | rag-day-27 | ✅ |
+| [28 — Definitional expansion + foundational mapping](28-definitional-expansion.md) | rag-day-28 | ✅ |
 
 ## Что появится позже
 
 | Концепт | План |
 |---|---|
-| 18 — Reading Room layout | app-day-21+ |
-| 19 — Search UI с фильтрами | app-day-31+ |
-| 20 — Chat SSE streaming | app-day-38+ |
-| 21 — Citation verification | rag-day-30+ |
-| 22 — Production deployment | app-day-53+ |
+| 21 — Reading Room outline + hover-glossary | переехало на app-day-25+ |
+| 22 — Search UI с фильтрами | app-day-31+ |
+| 23 — Citation verification | rag-day-30+ |
+| 24 — Production deployment | app-day-53+ |
+
+> **Концепт 25 (BYOK UI) — deferred.** Решение 2026-05-02: BYOK-модель
+> убивает onboarding для не-tech аудитории; в prod пока крутится единый
+> OPENROUTER_API_KEY владельца. Возвращаемся к концепту когда появится
+> public-launch с грантом / sponsorship'ом / donor-моделью —
+> rate-limit + budget-cap layer станет критичным, BYOK будет
+> опциональным upgrade для power-users.
 
 ## Сводный layer над концептами
 

@@ -42,6 +42,7 @@ DEFAULT_MODELS: tuple[str, ...] = (
 # 2026-04-29 (verified via /api/v1/models). Refresh if the script
 # undercounts cost or a new model is added.
 PRICING: dict[str, tuple[float, float]] = {
+    # Anthropic
     "anthropic/claude-haiku-4.5": (1.00, 5.00),
     "anthropic/claude-sonnet-4.5": (3.00, 15.00),
     "anthropic/claude-sonnet-4.6": (3.00, 15.00),
@@ -51,6 +52,15 @@ PRICING: dict[str, tuple[float, float]] = {
     "anthropic/claude-opus-4.7": (5.00, 25.00),
     "anthropic/claude-3.5-haiku": (0.80, 4.00),
     "anthropic/claude-3.7-sonnet": (3.00, 15.00),
+    # Verified 2026-05-02 via OpenRouter /api/v1/models for the rag-day-26
+    # 5-model bake-off. Refresh if the bake-off is repeated and a model
+    # shows "—" in the cost column.
+    "deepseek/deepseek-v4-flash": (0.14, 0.28),
+    "moonshotai/kimi-k2.6": (0.74, 3.49),
+    "moonshotai/kimi-k2-0905": (0.40, 2.00),
+    "moonshotai/kimi-k2-thinking": (0.60, 2.50),
+    "qwen/qwen3.6-plus": (0.325, 1.95),
+    "z-ai/glm-5.1": (1.05, 3.50),
 }
 
 
@@ -75,7 +85,7 @@ def _call_answer(*, api_url: str, query: str, model: str, top_k: int, style: str
     )
     t0 = time.perf_counter()
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310 — local API
+        with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310 — local API
             payload: dict[str, Any] = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         body_txt = exc.read().decode("utf-8", errors="replace")
