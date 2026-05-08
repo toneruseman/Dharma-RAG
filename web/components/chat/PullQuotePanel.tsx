@@ -51,7 +51,7 @@ export function PullQuotePanel({
     // disclosure open so transparency is preserved by default.
     return (
       <aside
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-3 lg:sticky lg:top-8 lg:self-start lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:pr-1"
         aria-label="Pull-quotes for this answer"
       >
         <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -77,7 +77,10 @@ export function PullQuotePanel({
   }
 
   return (
-    <aside className="flex flex-col gap-3" aria-label="Pull-quotes for this answer">
+    <aside
+      className="flex flex-col gap-3 lg:sticky lg:top-8 lg:self-start lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:pr-1"
+      aria-label="Pull-quotes for this answer"
+    >
       <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         Quotes ({cited.length})
       </h2>

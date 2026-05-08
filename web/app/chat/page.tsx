@@ -7,7 +7,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { ConfidenceBadge } from "@/components/chat/ConfidenceBadge";
 import { FeedbackWidget } from "@/components/chat/FeedbackWidget";
 import { PullQuotePanel } from "@/components/chat/PullQuotePanel";
-import type { AnswerResponse, AnswerSnapshot, Source } from "@/lib/api-client";
+import type { AnswerResponse, AnswerSnapshot, AnswerStyle, Source } from "@/lib/api-client";
 import { computeConfidence } from "@/lib/confidence";
 import { streamAsk, type DoneEvent } from "@/lib/sse";
 
@@ -89,6 +89,7 @@ export default function ChatPage() {
   const [response, setResponse] = useState<AnswerResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
+  const [style, setStyle] = useState<AnswerStyle>("auto");
 
   // Hold the active AbortController so we can cancel on unmount or
   // when the user starts a new query while one is still streaming.
@@ -114,10 +115,10 @@ export default function ChatPage() {
   }, []);
 
   function handleCitationActivate(workId: string) {
-    const target = document.getElementById(`quote-${workId}`);
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    // Highlight only — no auto-scroll. The badge's own tooltip
+    // (concept 20) shows the snippet at the cursor; the pull-quote
+    // panel is sticky-visible on lg+ screens so the user can glance
+    // at it without the document jumping under them.
     setHighlightedQuoteId(workId);
     if (quoteHighlightTimer.current) clearTimeout(quoteHighlightTimer.current);
     quoteHighlightTimer.current = setTimeout(
@@ -179,7 +180,7 @@ export default function ChatPage() {
     };
 
     controllerRef.current = streamAsk(
-      { query, top_k: 5 },
+      { query, top_k: 5, style },
       {
         onRetrievalDone: (event) => {
           sources = event.sources;
@@ -245,7 +246,12 @@ export default function ChatPage() {
         </p>
       </header>
 
-      <ChatInput isLoading={isStreaming} onSubmit={handleSubmit} />
+      <ChatInput
+        isLoading={isStreaming}
+        style={style}
+        onStyleChange={setStyle}
+        onSubmit={handleSubmit}
+      />
 
       {isStreaming && lastQuery && !response ? (
         <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
@@ -289,6 +295,7 @@ export default function ChatPage() {
             {confidence && !isStreaming ? <ConfidenceBadge verdict={confidence} /> : null}
             <AnswerView
               response={response}
+              isStreaming={isStreaming}
               highlightedCitationId={highlightedCitationId}
               onCitationActivate={handleCitationActivate}
             />

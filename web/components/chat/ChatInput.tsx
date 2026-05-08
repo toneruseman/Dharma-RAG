@@ -3,13 +3,22 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import type { AnswerStyle } from "@/lib/api-client";
 
 type ChatInputProps = {
   isLoading: boolean;
+  style: AnswerStyle;
+  onStyleChange: (style: AnswerStyle) => void;
   onSubmit: (query: string) => void;
 };
 
-export function ChatInput({ isLoading, onSubmit }: ChatInputProps) {
+const STYLE_OPTIONS: ReadonlyArray<{ value: AnswerStyle; label: string; hint: string }> = [
+  { value: "concise", label: "Concise", hint: "2-4 sentences (~512 tokens)" },
+  { value: "auto", label: "Auto", hint: "model picks length (~1024 tokens)" },
+  { value: "detailed", label: "Detailed", hint: "multi-paragraph (~3072 tokens)" },
+];
+
+export function ChatInput({ isLoading, style, onStyleChange, onSubmit }: ChatInputProps) {
   const [value, setValue] = useState("");
 
   const trimmed = value.trim();
@@ -49,11 +58,40 @@ export function ChatInput({ isLoading, onSubmit }: ChatInputProps) {
         disabled={isLoading}
         aria-label="Question"
       />
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>Enter to send · Shift+Enter for newline</span>
-        <Button type="submit" disabled={!canSubmit} size="sm">
-          {isLoading ? "Thinking…" : "Ask"}
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+        <div
+          role="radiogroup"
+          aria-label="Answer length"
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 p-0.5"
+        >
+          {STYLE_OPTIONS.map((opt) => {
+            const selected = style === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                title={opt.hint}
+                disabled={isLoading}
+                onClick={() => onStyleChange(opt.value)}
+                className={`rounded px-2 py-0.5 text-xs transition-colors ${
+                  selected
+                    ? "bg-background font-medium text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                } disabled:opacity-50`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:inline">Enter to send · Shift+Enter for newline</span>
+          <Button type="submit" disabled={!canSubmit} size="sm">
+            {isLoading ? "Thinking…" : "Ask"}
+          </Button>
+        </div>
       </div>
     </form>
   );

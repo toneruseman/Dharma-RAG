@@ -4,8 +4,24 @@ import { CitationBadge } from "@/components/chat/CitationBadge";
 import type { AnswerResponse, Source } from "@/lib/api-client";
 import { parseAnswerCitations } from "@/lib/citations";
 
+// Defense-in-depth: the system prompt forbids markdown in answers, but
+// some models still emit `**bold**` / `*italic*` / leading `#` headings.
+// The renderer is plain-text only, so strip the most common offenders
+// rather than ship literal asterisks to the user.
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(^|[^*])\*(?!\s)([^*\n]+?)\*(?!\*)/g, "$1$2")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^[-*+]\s+/gm, "");
+}
+
 type AnswerViewProps = {
   response: AnswerResponse;
+  /** True while tokens are still being streamed in — suppresses the
+   * "no sources matched" placeholder which would otherwise flash
+   * between `retrieval_done` and the first token. */
+  isStreaming?: boolean;
   /** Highlighted by transient pulse — `null` when nothing is highlighted. */
   highlightedCitationId?: string | null;
   /** Fires when the user hovers / focuses a citation badge for `workId`. */
@@ -14,6 +30,7 @@ type AnswerViewProps = {
 
 export function AnswerView({
   response,
+  isStreaming,
   highlightedCitationId,
   onCitationActivate,
 }: AnswerViewProps) {
@@ -32,6 +49,13 @@ export function AnswerView({
   }, [response.sources]);
 
   if (response.answer.trim().length === 0) {
+    if (isStreaming) {
+      return (
+        <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
+          Generating answer…
+        </div>
+      );
+    }
     return (
       <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
         No sources matched this query — the model declined to answer rather
@@ -54,7 +78,7 @@ export function AnswerView({
       {segments.map((segment, i) => {
         if (segment.type === "text") {
           // Preserve paragraph breaks the LLM emitted.
-          const paragraphs = segment.text.split(/\n{2,}/);
+          const paragraphs = stripMarkdown(segment.text).split(/\n{2,}/);
           return (
             <Fragment key={i}>
               {paragraphs.map((paragraph, pi) => (
