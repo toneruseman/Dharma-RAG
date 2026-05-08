@@ -33,8 +33,14 @@ def _build_minimal_matcher() -> FoundationalMatcher:
     entries = [
         FoundationalEntry(
             term="four noble truths",
-            aliases=("dukkha", "дуккха", "first sermon"),
+            aliases=("dukkha", "дуккха", "suffering", "first sermon"),
             works=("sn56.11",),
+            boost=1.5,
+        ),
+        FoundationalEntry(
+            term="anatta",
+            aliases=("анатта", "non-self", "not-self"),
+            works=("sn22.59",),
             boost=1.5,
         ),
         FoundationalEntry(
@@ -111,35 +117,94 @@ class TestMatcherMatch:
         assert result.boost_by_work["sn22.59"] == 1.6
 
 
+class TestBM25Aliases:
+    def test_dukkha_returns_suffering(self) -> None:
+        # Sujato translates `dukkha` to `suffering` in body text.
+        # bm25_aliases must surface English aliases for BM25 channel.
+        matcher = _build_minimal_matcher()
+        aliases = matcher.bm25_aliases("What is dukkha?")
+        assert "suffering" in aliases
+
+    def test_anatta_returns_not_self(self) -> None:
+        matcher = _build_minimal_matcher()
+        aliases = matcher.bm25_aliases("What is anatta?")
+        assert "not-self" in aliases or "non-self" in aliases
+
+    def test_metta_returns_loving_kindness(self) -> None:
+        matcher = _build_minimal_matcher()
+        aliases = matcher.bm25_aliases("Что такое метта?")
+        assert "loving-kindness" in aliases
+
+    def test_no_match_returns_empty(self) -> None:
+        matcher = _build_minimal_matcher()
+        assert matcher.bm25_aliases("How do I work with anger?") == []
+
+    def test_skips_pali_script_variants(self) -> None:
+        # `satipatthana` is just an ASCII spelling of `satipaṭṭhāna` —
+        # FTS already handles that via to_ascii_fold. We want
+        # English descriptive aliases only.
+        matcher = _build_minimal_matcher()
+        aliases = matcher.bm25_aliases("What is satipaṭṭhāna?")
+        assert "satipatthana" not in aliases
+        assert "mindfulness foundations" in aliases
+
+    def test_skips_cyrillic(self) -> None:
+        # Cyrillic aliases never go to FTS (config is English).
+        matcher = _build_minimal_matcher()
+        aliases = matcher.bm25_aliases("What is satipaṭṭhāna?")
+        assert all(not any("\u0400" <= ch <= "\u04ff" for ch in a) for a in aliases)
+
+    def test_caps_at_three(self) -> None:
+        # Bound query length so BM25 doesn't choke on long OR-chains.
+        from src.expand.foundational import FoundationalEntry, FoundationalMatcher
+
+        entry = FoundationalEntry(
+            term="x",
+            aliases=("alpha one", "beta two", "gamma three", "delta four", "epsilon five"),
+            works=("w1",),
+            boost=1.5,
+        )
+        matcher = FoundationalMatcher([entry], default_boost=1.5)
+        aliases = matcher.bm25_aliases("x is interesting")
+        assert len(aliases) <= 3
+
+
 class TestApplyBoost:
-    def test_boost_applied_and_resorted(self) -> None:
+    def test_floor_to_top_promotes_low_ranked_foundational(self) -> None:
+        # Floor-to-top semantics (rag-day-29): foundational works only
+        # in BM25 channel get rrf_score ~0.015 vs top ~0.045 — pure
+        # multiplication is insufficient. Floor at top_original * boost
+        # guarantees they appear near top.
         matcher = _build_minimal_matcher()
         hits = [
             _make_hit("mn9", rrf_score=0.045),
             _make_hit("sn35.226", rrf_score=0.038),
-            _make_hit("sn56.11", rrf_score=0.025),  # foundational, lower rank
+            _make_hit("sn56.11", rrf_score=0.025),  # foundational, low
         ]
         boosted = matcher.apply_boost(hits, "What is dukkha?")
-        # sn56.11 lifted to top: 0.025 * 1.5 = 0.0375 > 0.045? No — 0.0375 < 0.045
-        # Actually mn9 (0.045) still wins. Boost is moderate, not absolute.
-        # Check that sn56.11 was boosted, not necessarily that it ranks #1.
-        assert boosted[2].work_canonical_id == "sn56.11"
-        assert boosted[2].rrf_score == pytest.approx(0.025 * 1.5)
-        # Boost is large enough to lift past sn35.226 (0.038 vs 0.0375 — close).
-        # Verify ordering reflects actual scores.
-        scores = [h.rrf_score for h in boosted]
-        assert scores == sorted(scores, reverse=True)
+        # sn56.11 floored to 0.045 * 1.5 = 0.0675 → ranks #1
+        assert boosted[0].work_canonical_id == "sn56.11"
+        assert boosted[0].rrf_score == pytest.approx(0.045 * 1.5)
+        # Non-foundational works keep original scores, ordered organically
+        assert boosted[1].work_canonical_id == "mn9"
+        assert boosted[1].rrf_score == pytest.approx(0.045)
+        assert boosted[2].work_canonical_id == "sn35.226"
+        assert boosted[2].rrf_score == pytest.approx(0.038)
 
-    def test_strong_boost_promotes_to_top(self) -> None:
-        # When boost moves the score above all others, ordering changes.
+    def test_floor_does_not_demote_high_competitive_foundational(self) -> None:
+        # When foundational score from multiplicative boost already
+        # exceeds the floor, multiplicative wins (don't demote).
         matcher = _build_minimal_matcher()
         hits = [
             _make_hit("mn9", rrf_score=0.030),
-            _make_hit("mn10", rrf_score=0.025),  # foundational for satipatthana
+            _make_hit("mn10", rrf_score=0.040),  # foundational, already high
         ]
         boosted = matcher.apply_boost(hits, "What is satipaṭṭhāna?")
+        # mn10 multiplicative: 0.040 * 1.5 = 0.060
+        # mn10 floor:          0.040 * 1.5 = 0.060 (same)
+        # max = 0.060 → mn10 #1
         assert boosted[0].work_canonical_id == "mn10"
-        assert boosted[0].rrf_score == pytest.approx(0.025 * 1.5)
+        assert boosted[0].rrf_score == pytest.approx(0.060)
 
     def test_no_match_returns_input(self) -> None:
         matcher = _build_minimal_matcher()

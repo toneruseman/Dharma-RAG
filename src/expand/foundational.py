@@ -145,23 +145,86 @@ class FoundationalMatcher:
             boost_by_work=boost_by_work,
         )
 
+    def bm25_aliases(self, query: str) -> list[str]:
+        """Return English-descriptive aliases for matched terms.
+
+        Sujato's translation replaces most Pāli terms with English
+        equivalents (``dukkha`` → ``suffering``, ``anatta`` → ``not-self``,
+        ``metta`` → ``loving-kindness``). A literal Pāli token query
+        produces zero BM25 hits because the body text never contains
+        the Pāli word. This method returns English aliases that the
+        caller appends to the BM25 channel query so FTS can match.
+
+        Filtering: skip the term itself, skip aliases that are ASCII
+        transliterations of the same Pāli word (single-token, no
+        spaces), skip Cyrillic aliases (FTS config is English).
+
+        Returns at most 3 aliases per call to bound BM25 query length.
+        """
+        match = self.match(query)
+        if not match.matched_entries:
+            return []
+        aliases: list[str] = []
+        for entry in match.matched_entries:
+            for alias in entry.aliases:
+                cleaned = alias.strip()
+                if not cleaned:
+                    continue
+                if _looks_pali_term(cleaned, entry.term):
+                    continue
+                if _looks_cyrillic(cleaned):
+                    continue
+                if cleaned not in aliases:
+                    aliases.append(cleaned)
+                if len(aliases) >= 3:
+                    break
+            if len(aliases) >= 3:
+                break
+        return aliases
+
     def apply_boost(self, hits: list[HybridHit], query: str) -> list[HybridHit]:
         """Boost ``rrf_score`` of hits whose work matches a curated term.
 
-        Returns a *new* list (HybridHit is frozen). Order is by boosted
-        ``rrf_score`` descending. When no match fires, returns the
-        original list reference unchanged — zero allocation overhead.
+        Two-part promotion semantics:
+
+        1. **Multiplicative**: ``rrf_score *= entry.boost`` for matched
+           works. Lifts hits that are already competitive.
+        2. **Floor-to-top**: if a foundational work appears in only one
+           channel (e.g. BM25 alone — rrf_score ~0.015 vs top ~0.05),
+           multiplicative boost is insufficient. Apply a floor at
+           ``top_score`` so foundational works are guaranteed to
+           appear near the top of the final list when matched. This
+           is the explicit curatorial intent: ``dukkha → sn56.11``
+           means "show sn56.11 prominently when user asks about
+           dukkha", not "lift it slightly".
+
+        The floor is the maximum *original* rrf_score across all hits
+        (before per-hit multiplicative boost), so foundational works
+        end up tied with the previous top, ranked by their own boost
+        factor as tiebreak. Non-foundational works keep original
+        scores, preserving organic ranking below the foundational cap.
+
+        Returns a *new* list (HybridHit is frozen). When no match
+        fires, returns the original list reference unchanged.
         """
         match = self.match(query)
         if not match.boost_by_work:
             return hits
+        if not hits:
+            return hits
+        top_original = max(h.rrf_score for h in hits)
         boosted: list[HybridHit] = []
         for hit in hits:
             factor = match.boost_by_work.get(hit.work_canonical_id)
             if factor is None:
                 boosted.append(hit)
             else:
-                boosted.append(replace(hit, rrf_score=hit.rrf_score * factor))
+                # Multiplicative bump first, then floor at top × factor
+                # so the foundational tier lands above the organic top.
+                multiplicative = hit.rrf_score * factor
+                floor = top_original * factor
+                new_score = max(multiplicative, floor)
+                boosted.append(replace(hit, rrf_score=new_score))
         boosted.sort(key=lambda h: h.rrf_score, reverse=True)
         return boosted
 
@@ -206,6 +269,33 @@ def load_foundational_matcher(
         len({w for e in entries for w in e.works}),
     )
     return FoundationalMatcher(entries, default_boost=default_boost)
+
+
+def _looks_cyrillic(text: str) -> bool:
+    """True iff text contains any Cyrillic character."""
+    return any("\u0400" <= ch <= "\u04ff" for ch in text)
+
+
+def _looks_pali_term(alias: str, canonical_term: str) -> bool:
+    """True iff alias is just a Pāli/IAST variant of the canonical term.
+
+    We want to skip aliases like ``satipatthana`` when canonical is
+    ``satipaṭṭhāna`` — they're the same word in a different script and
+    don't help BM25 (FTS already folds diacritics symmetrically). Keep
+    English descriptive phrases like ``four foundations of mindfulness``.
+    """
+    a = unicodedata.normalize("NFC", alias).casefold()
+    c = unicodedata.normalize("NFC", canonical_term).casefold()
+    # Multi-word descriptive phrase → keep
+    if " " in a:
+        return False
+    # Single token: drop ASCII variants of the same canonical Pāli word
+    # by normalising both sides through the same diacritic folding the
+    # corpus uses elsewhere. If they collapse to the same string, alias
+    # is just a script variant.
+    from src.processing.cleaner import to_ascii_fold
+
+    return to_ascii_fold(a) == to_ascii_fold(c)
 
 
 def _normalise(text: str) -> str:

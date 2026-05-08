@@ -194,11 +194,6 @@ class RAGService:
                 encoded_query = expanded
                 expand_pali_effective = True
 
-        # BM25 receives the *un-expanded* query so Postgres FTS keeps
-        # precision on the raw term — we only sweeten the encoder-side
-        # input. Raw user query is the safest BM25 source.
-        bm25_query = request.query
-
         # Foundational boost (rag-day-28). Captures matcher + raw user
         # query in a closure handed to ``hybrid_search`` for post-RRF
         # score multiplication on canonical works of curated terms.
@@ -222,6 +217,26 @@ class RAGService:
                     return self._foundational.apply_boost(hits, matcher_query)
 
                 boost_callable = _apply_boost
+
+        # BM25 receives the *un-expanded* query so Postgres FTS keeps
+        # precision on the raw term — we only sweeten the encoder-side
+        # input. Raw user query is the safest BM25 source.
+        # Exception (rag-day-29): when the foundational matcher fires on
+        # a Pāli term that Sujato translates to English (`dukkha`/
+        # `anatta`/`metta`), body text never contains the Pāli word —
+        # BM25 returns 0 hits regardless of fold. Append English aliases
+        # as ``OR`` clauses so FTS can match the translated form.
+        # Diagnostic confirmed: BM25(``suffering``) ranks sn56.11 #1,
+        # BM25(``not-self``) ranks sn22.59 #3 — exactly the works the
+        # bare Pāli token misses.
+        bm25_query = request.query
+        if foundational_requested and self._foundational is not None:
+            bm25_aliases = self._foundational.bm25_aliases(request.query)
+            if bm25_aliases:
+                # ``websearch_to_tsquery`` accepts lowercase ``or`` as
+                # disjunction and ``"phrase"`` for phrase match.
+                clauses = [request.query] + [f'"{a}"' if " " in a else a for a in bm25_aliases]
+                bm25_query = " or ".join(clauses)
 
         async with self._session() as session:
             hits, _timings = await hybrid_search(
