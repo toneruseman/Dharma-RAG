@@ -46,6 +46,7 @@
 | [23 — Feedback widget 👍/👎](23-feedback-widget.md) | app-day-26 | ✅ |
 | [24 — Pull-quote side panel](24-pull-quote-side-panel.md) | app-day-27 | ✅ |
 | [25 — BYOK UI](25-byok-ui.md) | app-day-28 | ⏸ deferred (см. ниже) |
+| [26 — Retrieval failure analysis](26-failure-analysis.md) | rag-day-26 | ✅ |
 
 ## Что появится позже
 
