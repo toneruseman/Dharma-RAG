@@ -12,8 +12,11 @@ from __future__ import annotations
 import logging
 import re
 import time
+import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+
+import structlog
 
 from src.answer.llm import AsyncOpenRouterLLM
 from src.answer.schemas import (
@@ -255,6 +258,8 @@ class AnswerService:
     async def answer(self, request: AnswerRequest) -> AnswerResponse:
         """Run retrieval + LLM and return the synthesised answer."""
         wall_start = time.perf_counter()
+        trace_id = str(uuid.uuid4())
+        structlog.contextvars.bind_contextvars(trace_id=trace_id)
 
         # Effective style: request override wins, else server default.
         effective_style: AnswerStyle = (
@@ -308,6 +313,7 @@ class AnswerService:
             retrieval_latency_ms=retrieval_latency_ms,
             llm_latency_ms=llm_latency_ms,
             metadata=AnswerMetadata(
+                trace_id=trace_id,
                 pipeline_version=rag_response.metadata.version,
                 llm_model=llm_model,
                 llm_tokens_in=tokens_in,
@@ -330,6 +336,8 @@ class AnswerService:
         ``token`` events as deltas arrive.
         """
         wall_start = time.perf_counter()
+        trace_id = str(uuid.uuid4())
+        structlog.contextvars.bind_contextvars(trace_id=trace_id)
 
         effective_style: AnswerStyle = (
             request.style if request.style is not None else self._settings.answer_default_style
@@ -366,6 +374,7 @@ class AnswerService:
                 latency_ms=total_latency_ms,
                 llm_latency_ms=0.0,
                 metadata=AnswerMetadata(
+                    trace_id=trace_id,
                     pipeline_version=rag_response.metadata.version,
                     llm_model=self._llm.default_model,
                     llm_tokens_in=0,
@@ -415,6 +424,7 @@ class AnswerService:
             latency_ms=total_latency_ms,
             llm_latency_ms=llm_latency_ms,
             metadata=AnswerMetadata(
+                trace_id=trace_id,
                 pipeline_version=rag_response.metadata.version,
                 llm_model=llm_model,
                 llm_tokens_in=tokens_in,

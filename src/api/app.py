@@ -19,6 +19,8 @@ from pydantic import BaseModel
 from src import __version__
 from src.api.answer import install_router as install_answer_router
 from src.api.answer import shutdown_service as shutdown_answer_service
+from src.api.feedback import install_router as install_feedback_router
+from src.api.feedback import shutdown_service as shutdown_feedback_service
 from src.api.query import install_router as install_query_router
 from src.api.query import shutdown_service as shutdown_query_service
 from src.api.retrieve import install_router as install_retrieve_router
@@ -64,6 +66,7 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            shutdown_feedback_service()
             shutdown_answer_service()
             shutdown_sources_service()
             shutdown_query_service()
@@ -123,6 +126,7 @@ def create_app() -> FastAPI:
     install_query_router(app)
     install_sources_router(app)
     install_answer_router(app)
+    install_feedback_router(app)
 
     @app.get(
         "/health",

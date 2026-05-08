@@ -56,6 +56,15 @@ export type AnswerMetadata = components["schemas"]["AnswerMetadata"];
 /** Answer length / depth preference. */
 export type AnswerStyle = NonNullable<AnswerRequest["style"]>;
 
+/** Body of `POST /api/feedback`. */
+export type FeedbackRequest = components["schemas"]["FeedbackRequest"];
+
+/** Body of the response from `POST /api/feedback`. */
+export type FeedbackResponse = components["schemas"]["FeedbackResponse"];
+
+/** Snapshot of the answer fields persisted alongside a feedback row. */
+export type AnswerSnapshot = components["schemas"]["AnswerSnapshot"];
+
 /** Health-check response. */
 export type HealthResponse = paths["/health"]["get"]["responses"]["200"]["content"]["application/json"];
 
@@ -199,6 +208,21 @@ export async function ask(
   init?: RequestInit,
 ): Promise<AnswerResponse> {
   return postJson<AnswerRequest, AnswerResponse>("/api/answer", body, init);
+}
+
+/**
+ * Submit a 👍/👎 vote (and optional comment) for a previous answer.
+ *
+ * Idempotent — repeating the call with the same ``trace_id`` updates
+ * the existing row server-side. The ``answer_snapshot`` is the subset
+ * of ``AnswerResponse`` / ``DoneEvent`` fields that the row needs to
+ * be self-contained for review through ``psql``.
+ */
+export async function sendFeedback(
+  body: FeedbackRequest,
+  init?: RequestInit,
+): Promise<FeedbackResponse> {
+  return postJson<FeedbackRequest, FeedbackResponse>("/api/feedback", body, init);
 }
 
 // ---------------------------------------------------------------------------

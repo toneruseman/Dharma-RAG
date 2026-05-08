@@ -39,9 +39,15 @@
             ],
             "title": "Style",
             "type": "string"
+          },
+          "trace_id": {
+            "description": "UUID4 identifying this single request/response. Generated server-side and propagated through structlog context, Phoenix spans, and the response payload. Used as the primary key for ``POST /api/feedback`` so a client can attach 👍/👎 to a specific answer.",
+            "title": "Trace Id",
+            "type": "string"
           }
         },
         "required": [
+          "trace_id",
           "pipeline_version",
           "llm_model",
           "llm_tokens_in",
@@ -192,6 +198,129 @@
           "metadata"
         ],
         "title": "AnswerResponse",
+        "type": "object"
+      },
+      "AnswerSnapshot": {
+        "description": "Fields of the rated answer that we persist alongside the vote.\n\nAll fields are required so review through ``psql`` doesn't need a\njoin — see ``docs/concepts/23-feedback-widget.md`` section \"Схема\nтаблицы\". Mirrors the subset of ``AnswerMetadata`` + ``query`` /\n``answer`` text that the frontend already has after a successful\nanswer.",
+        "properties": {
+          "answer_text": {
+            "maxLength": 20000,
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "latency_ms": {
+            "minimum": 0.0,
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "llm_model": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Llm Model",
+            "type": "string"
+          },
+          "llm_tokens_in": {
+            "minimum": 0.0,
+            "title": "Llm Tokens In",
+            "type": "integer"
+          },
+          "llm_tokens_out": {
+            "minimum": 0.0,
+            "title": "Llm Tokens Out",
+            "type": "integer"
+          },
+          "pipeline_version": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Pipeline Version",
+            "type": "string"
+          },
+          "query_text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query Text",
+            "type": "string"
+          },
+          "style": {
+            "enum": [
+              "auto",
+              "concise",
+              "detailed"
+            ],
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query_text",
+          "answer_text",
+          "pipeline_version",
+          "llm_model",
+          "style",
+          "latency_ms",
+          "llm_tokens_in",
+          "llm_tokens_out"
+        ],
+        "title": "AnswerSnapshot",
+        "type": "object"
+      },
+      "FeedbackRequest": {
+        "description": "Body of POST /api/feedback.",
+        "properties": {
+          "answer_snapshot": {
+            "$ref": "#/components/schemas/AnswerSnapshot",
+            "description": "Echo of the rated answer's metadata so the row is self-contained (no audit_log join). Removed once audit_log exists (app-day-49)."
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional free-text comment (≤2000 chars). Guards against megabyte-sized rants without restricting genuine feedback.",
+            "title": "Comment"
+          },
+          "thumb": {
+            "description": "``+1`` for 👍 (helpful), ``-1`` for 👎 (not helpful). No neutral.",
+            "enum": [
+              1,
+              -1
+            ],
+            "title": "Thumb",
+            "type": "integer"
+          },
+          "trace_id": {
+            "description": "UUID4 of the answer being rated. Comes from ``AnswerMetadata.trace_id`` in the prior /api/answer or /api/answer/stream response.",
+            "format": "uuid",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trace_id",
+          "thumb",
+          "answer_snapshot"
+        ],
+        "title": "FeedbackRequest",
+        "type": "object"
+      },
+      "FeedbackResponse": {
+        "description": "Body of the response from POST /api/feedback.",
+        "properties": {
+          "saved": {
+            "description": "Always ``true`` on a 2xx — operation is idempotent (upsert). Reserved as a non-trivial field so the response stays a JSON object even after future additions (e.g. ``echo_id``).",
+            "title": "Saved",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "saved"
+        ],
+        "title": "FeedbackResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -709,6 +838,47 @@
         "summary": "LLM-grounded answer streamed as Server-Sent Events",
         "tags": [
           "answer"
+        ]
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "operationId": "submit_feedback_api_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record a 👍/👎 vote on a previous answer",
+        "tags": [
+          "feedback"
         ]
       }
     },

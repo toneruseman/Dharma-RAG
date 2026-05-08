@@ -5,8 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnswerView } from "@/components/chat/AnswerView";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConfidenceBadge } from "@/components/chat/ConfidenceBadge";
+import { FeedbackWidget } from "@/components/chat/FeedbackWidget";
 import { SourcesPanel } from "@/components/chat/SourcesPanel";
-import type { AnswerResponse, Source } from "@/lib/api-client";
+import type { AnswerResponse, AnswerSnapshot, Source } from "@/lib/api-client";
 import { computeConfidence } from "@/lib/confidence";
 import { streamAsk, type DoneEvent } from "@/lib/sse";
 
@@ -46,6 +47,11 @@ function buildLiveResponse({
     retrieval_latency_ms: retrievalLatencyMs,
     llm_latency_ms: Math.max(0, elapsed - retrievalLatencyMs),
     metadata: {
+      // Real ``trace_id`` arrives in ``DoneEvent.metadata`` and replaces
+      // this placeholder via ``setResponse`` below. The empty string
+      // prevents the FeedbackWidget from rendering during streaming
+      // (it gates on a non-empty trace_id).
+      trace_id: "",
       pipeline_version: pipelineVersion,
       llm_model: "streaming…",
       llm_tokens_in: 0,
@@ -60,6 +66,19 @@ function buildLiveResponse({
         n_candidates: sources.length,
       },
     },
+  };
+}
+
+function buildSnapshot(response: AnswerResponse): AnswerSnapshot {
+  return {
+    query_text: response.query,
+    answer_text: response.answer,
+    pipeline_version: response.metadata.pipeline_version,
+    llm_model: response.metadata.llm_model,
+    style: response.metadata.style,
+    latency_ms: Math.max(0, Math.round(response.latency_ms)),
+    llm_tokens_in: response.metadata.llm_tokens_in,
+    llm_tokens_out: response.metadata.llm_tokens_out,
   };
 }
 
@@ -227,6 +246,13 @@ export default function ChatPage() {
             </div>
             {confidence && !isStreaming ? <ConfidenceBadge verdict={confidence} /> : null}
             <AnswerView response={response} />
+            {!isStreaming && response.metadata?.trace_id && response.answer.trim().length > 0 ? (
+              <FeedbackWidget
+                key={response.metadata.trace_id}
+                traceId={response.metadata.trace_id}
+                snapshot={buildSnapshot(response)}
+              />
+            ) : null}
           </div>
           <SourcesPanel sources={response.sources} />
         </section>

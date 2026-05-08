@@ -94,6 +94,16 @@ class AnswerRequest(BaseModel):
 class AnswerMetadata(BaseModel):
     """Diagnostic metadata for an answer call."""
 
+    trace_id: str = Field(
+        ...,
+        description=(
+            "UUID4 identifying this single request/response. Generated "
+            "server-side and propagated through structlog context, Phoenix "
+            "spans, and the response payload. Used as the primary key for "
+            "``POST /api/feedback`` so a client can attach 👍/👎 to a "
+            "specific answer."
+        ),
+    )
     pipeline_version: str = Field(
         ...,
         description=(

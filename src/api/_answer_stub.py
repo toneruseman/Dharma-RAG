@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import uuid
 from collections.abc import AsyncIterator
 
 from src.answer.protocol import AnswerServiceProtocol
@@ -52,6 +53,7 @@ class StubAnswerService(AnswerServiceProtocol):
         self._rag = rag_stub or StubRAGService()
 
     async def answer(self, request: AnswerRequest) -> AnswerResponse:
+        trace_id = str(uuid.uuid4())
         # Reuse the retrieval stub so forbidden_works / top_k filtering
         # behaves identically to production.
         rag_response = await self._rag.query(
@@ -80,6 +82,7 @@ class StubAnswerService(AnswerServiceProtocol):
             retrieval_latency_ms=1.0,
             llm_latency_ms=0.0,
             metadata=AnswerMetadata(
+                trace_id=trace_id,
                 pipeline_version="stub-v1",
                 llm_model="stub/static",
                 llm_tokens_in=0,
@@ -102,6 +105,7 @@ class StubAnswerService(AnswerServiceProtocol):
         abort-on-unmount, partial-bracket citation glitches).
         """
         wall_start = time.perf_counter()
+        trace_id = str(uuid.uuid4())
 
         retrieval_start = time.perf_counter()
         rag_response = await self._rag.query(
@@ -134,6 +138,7 @@ class StubAnswerService(AnswerServiceProtocol):
                 latency_ms=total_latency_ms,
                 llm_latency_ms=0.0,
                 metadata=AnswerMetadata(
+                    trace_id=trace_id,
                     pipeline_version="stub-v1",
                     llm_model="stub/static",
                     llm_tokens_in=0,
@@ -166,6 +171,7 @@ class StubAnswerService(AnswerServiceProtocol):
             latency_ms=total_latency_ms,
             llm_latency_ms=llm_latency_ms,
             metadata=AnswerMetadata(
+                trace_id=trace_id,
                 pipeline_version="stub-v1",
                 llm_model="stub/static",
                 llm_tokens_in=0,
