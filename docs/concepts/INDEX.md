@@ -47,6 +47,7 @@
 | [24 — Pull-quote side panel](24-pull-quote-side-panel.md) | app-day-27 | ✅ |
 | [25 — BYOK UI](25-byok-ui.md) | app-day-28 | ⏸ deferred (см. ниже) |
 | [26 — Retrieval failure analysis](26-failure-analysis.md) | rag-day-26 | ✅ |
+| [27 — qa_040 anomaly investigation](27-qa040-anomaly.md) | rag-day-27 | ✅ |
 
 ## Что появится позже
 
