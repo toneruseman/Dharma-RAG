@@ -52,6 +52,7 @@
 | [29 — BM25 translation bridge](29-bm25-translation-bridge.md) | rag-day-29 | ✅ |
 | [30 — Russian foundational expansion](30-russian-foundational-expansion.md) | rag-day-30 | ✅ |
 | [32 — Cumulative re-eval (28+29+30)](32-cumulative-eval.md) | rag-day-32 | ✅ |
+| [33 — Khuddaka Nikāya ingest](33-khuddaka-ingest.md) | rag-day-33 | ✅ |
 
 ## Что появится позже
 
