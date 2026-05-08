@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { href: "/read", label: "Read" },
   { href: "/search", label: "Search" },
   { href: "/chat", label: "Chat" },
+  { href: "/thread", label: "Thread" },
 ] as const;
 
 export function Header() {

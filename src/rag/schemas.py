@@ -318,3 +318,120 @@ class SourceDocument(BaseModel):
             "but caller should treat it as an error condition."
         ),
     )
+
+
+# --------------------------------------------------------------------- #
+# POST /api/thread/next — LLM-free "infinite thread" (rag-day-36).
+#
+# Drives the Yoniso-style passage-rotation UX: each «Далее» press
+# returns the next batch of canonical chunks for the same query,
+# excluding chunks already shown. No LLM in the loop — we ship the
+# pre-baked Contextual-Retrieval prefix (rag-day-16) as the narrative
+# intro and the chunk text as the body. Cost per round: $0.
+# --------------------------------------------------------------------- #
+
+
+class ThreadRequest(BaseModel):
+    """Body of POST /api/thread/next."""
+
+    query: str = Field(..., min_length=1, max_length=2000, description="User query")
+    excluded_chunk_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "UUIDs of chunks already shown in earlier rounds. The server "
+            "filters them out before truncating to ``top_k`` so each "
+            "press of «Далее» surfaces fresh material. Pass back what "
+            "the server returned in prior ``ThreadCard.chunk_id`` "
+            "values — the client owns the dedup state, the server is "
+            "stateless."
+        ),
+    )
+    top_k: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description=(
+            "Cards per round. Smaller than /api/query because each card "
+            "is a self-contained passage the user reads end-to-end — 3 "
+            "is the sweet spot for a single scroll-view."
+        ),
+    )
+
+
+class ThreadCard(BaseModel):
+    """One canonical passage card in the LLM-free thread.
+
+    Mapped from a child ``HybridHit`` (no parent expansion — children
+    are bite-sized, ~384 tokens, exactly card-size). The Contextual
+    Retrieval prefix (``context_text``, generated at ingest by Haiku
+    3.5) gives the user a one-sentence "what this passage is about"
+    intro for free; falls back to ``None`` for parent chunks or rows
+    the contextualiser hasn't visited yet.
+    """
+
+    chunk_id: str = Field(
+        ...,
+        description=(
+            "Stable UUID hex of the chunk. Echo back in the next "
+            "request's ``excluded_chunk_ids`` to avoid re-showing."
+        ),
+    )
+    work_canonical_id: str = Field(
+        ..., description="Stable canonical ID like ``mn10`` or ``sn56.11``."
+    )
+    segment_id: str | None = Field(
+        default=None,
+        description="SuttaCentral segment id when present (``mn10:12.3``).",
+    )
+    text: str = Field(
+        ...,
+        description=(
+            "Canonical chunk text — the actual passage from the Pāli "
+            "Canon, no synthesis applied. ~200-500 words for a child "
+            "chunk."
+        ),
+    )
+    context_text: str | None = Field(
+        default=None,
+        description=(
+            "Contextual Retrieval prefix (rag-day-16): a 1-3 sentence "
+            "narrative intro generated at ingest. Use as a header above "
+            "``text`` to orient the reader. ``None`` when the chunk "
+            "predates the contextualiser run."
+        ),
+    )
+    translator: str | None = Field(
+        default=None,
+        description=(
+            "Translator slug from ``author_t`` (``sujato``, ``thanissaro``, "
+            "``sv``…). ``None`` for compiled or anonymous editions."
+        ),
+    )
+    language_code: str = Field(
+        ...,
+        description="Expression language code (``eng``, ``rus``, ``pli``).",
+    )
+    score: float = Field(..., ge=0.0, le=1.0, description="Normalised relevance score in [0, 1].")
+
+
+class ThreadResponse(BaseModel):
+    """Body of the response from POST /api/thread/next."""
+
+    query: str = Field(..., description="Echo of the user's query.")
+    cards: list[ThreadCard] = Field(
+        ...,
+        description=(
+            "Next batch of passages, top-scoring first. Empty list "
+            "when the retrieval pool is exhausted for this query — see "
+            "``exhausted``."
+        ),
+    )
+    exhausted: bool = Field(
+        ...,
+        description=(
+            "``True`` when fewer than ``top_k`` fresh passages remained "
+            "after applying ``excluded_chunk_ids``. The frontend should "
+            "hide the «Далее» button (or label it «End of thread»)."
+        ),
+    )
+    latency_ms: float = Field(..., description="End-to-end wall-clock time in milliseconds.")

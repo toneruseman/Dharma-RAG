@@ -27,6 +27,8 @@ from src.api.retrieve import install_router as install_retrieve_router
 from src.api.retrieve import shutdown_resources as shutdown_retrieve_resources
 from src.api.sources import install_router as install_sources_router
 from src.api.sources import shutdown_service as shutdown_sources_service
+from src.api.thread import install_router as install_thread_router
+from src.api.thread import shutdown_service as shutdown_thread_service
 from src.config import get_settings
 from src.logging_config import get_logger, setup_logging
 from src.observability import setup_tracing, shutdown_tracing
@@ -67,6 +69,7 @@ def create_app() -> FastAPI:
             yield
         finally:
             shutdown_feedback_service()
+            shutdown_thread_service()
             shutdown_answer_service()
             shutdown_sources_service()
             shutdown_query_service()
@@ -126,6 +129,7 @@ def create_app() -> FastAPI:
     install_query_router(app)
     install_sources_router(app)
     install_answer_router(app)
+    install_thread_router(app)
     install_feedback_router(app)
 
     @app.get(

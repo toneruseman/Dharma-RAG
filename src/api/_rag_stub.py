@@ -22,6 +22,9 @@ from src.rag.schemas import (
     SourceDocument,
     SourceParagraph,
     SourceTranslation,
+    ThreadCard,
+    ThreadRequest,
+    ThreadResponse,
 )
 
 # Three plausible Buddhist-canon sources covering distinct topics so a
@@ -251,6 +254,37 @@ class StubRAGService(RAGServiceProtocol):
                 expand_pali=False,
                 n_candidates=len(_FIXTURE_SOURCES),
             ),
+        )
+
+    async def thread_next(self, request: ThreadRequest) -> ThreadResponse:
+        # Map the fixture sources onto a deterministic stable chunk_id
+        # space so the client's excluded-list dedup works across rounds.
+        # Same shape as production: 3 cards available → after exclusions
+        # the rest are ``exhausted=True``.
+        excluded = set(request.excluded_chunk_ids or [])
+        all_cards = [
+            ThreadCard(
+                chunk_id=f"stub-chunk-{i}",
+                work_canonical_id=src.work_canonical_id,
+                segment_id=src.segment_id,
+                text=src.text,
+                context_text=(
+                    f"This passage from {src.work_canonical_id.upper()} "
+                    "introduces a key Buddhist teaching. [stub context_text]"
+                ),
+                translator="sujato",
+                language_code="eng",
+                score=src.score,
+            )
+            for i, src in enumerate(_FIXTURE_SOURCES)
+        ]
+        fresh = [c for c in all_cards if c.chunk_id not in excluded]
+        cards = fresh[: request.top_k]
+        return ThreadResponse(
+            query=request.query,
+            cards=cards,
+            exhausted=len(cards) < request.top_k,
+            latency_ms=1.0,
         )
 
     async def get_source(self, canonical_id: str) -> SourceDocument | None:

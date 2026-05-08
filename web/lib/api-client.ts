@@ -65,6 +65,15 @@ export type FeedbackResponse = components["schemas"]["FeedbackResponse"];
 /** Snapshot of the answer fields persisted alongside a feedback row. */
 export type AnswerSnapshot = components["schemas"]["AnswerSnapshot"];
 
+/** Body of `POST /api/thread/next` — LLM-free passage rotation. */
+export type ThreadRequest = components["schemas"]["ThreadRequest"];
+
+/** Body of the response from `POST /api/thread/next`. */
+export type ThreadResponse = components["schemas"]["ThreadResponse"];
+
+/** One canonical passage card in the LLM-free thread. */
+export type ThreadCard = components["schemas"]["ThreadCard"];
+
 /** Health-check response. */
 export type HealthResponse = paths["/health"]["get"]["responses"]["200"]["content"]["application/json"];
 
@@ -208,6 +217,22 @@ export async function ask(
   init?: RequestInit,
 ): Promise<AnswerResponse> {
   return postJson<AnswerRequest, AnswerResponse>("/api/answer", body, init);
+}
+
+/**
+ * Fetch the next round of canonical passages for the LLM-free
+ * "infinite thread" UX (rag-day-36). Pass back the accumulated
+ * ``excluded_chunk_ids`` from prior rounds so the server skips them.
+ *
+ * No LLM in the loop — each round is one retrieval call (~200 ms,
+ * $0). When ``response.exhausted`` is true the pool is empty and the
+ * UI should label or hide the «Далее» button.
+ */
+export async function threadNext(
+  body: ThreadRequest,
+  init?: RequestInit,
+): Promise<ThreadResponse> {
+  return postJson<ThreadRequest, ThreadResponse>("/api/thread/next", body, init);
 }
 
 /**

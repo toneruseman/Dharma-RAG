@@ -65,6 +65,8 @@ function buildLiveResponse({
         rerank: false,
         expand_parents: false,
         expand_pali: false,
+        expand_definitional: false,
+        foundational_boost: false,
         n_candidates: sources.length,
       },
     },

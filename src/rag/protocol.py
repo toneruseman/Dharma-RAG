@@ -18,7 +18,13 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from src.rag.schemas import QueryRequest, QueryResponse, SourceDocument
+from src.rag.schemas import (
+    QueryRequest,
+    QueryResponse,
+    SourceDocument,
+    ThreadRequest,
+    ThreadResponse,
+)
 
 
 @runtime_checkable
@@ -26,11 +32,23 @@ class RAGServiceProtocol(Protocol):
     """Anything that can serve the RAG public surface.
 
     Implementations are responsible for resource lifecycle (encoder,
-    DB pool, etc). Callers see two coroutines: ``query`` for retrieval
-    and ``get_source`` for the Reading Room.
+    DB pool, etc). Callers see three coroutines: ``query`` for the
+    LLM-grounded retrieval, ``thread_next`` for the LLM-free «infinite
+    thread» rotation (rag-day-36), and ``get_source`` for the Reading
+    Room.
     """
 
     async def query(self, request: QueryRequest) -> QueryResponse: ...
+
+    async def thread_next(self, request: ThreadRequest) -> ThreadResponse:
+        """Return the next batch of canonical passages for ``request.query``.
+
+        Stateless: the client passes back its own list of already-shown
+        ``chunk_id``s in ``request.excluded_chunk_ids`` and gets fresh
+        cards. Empty ``cards`` + ``exhausted=True`` signals end of the
+        retrieval pool — see :class:`src.rag.schemas.ThreadResponse`.
+        """
+        ...
 
     async def get_source(self, canonical_id: str) -> SourceDocument | None:
         """Return the full document for ``canonical_id`` (e.g. ``mn10``).

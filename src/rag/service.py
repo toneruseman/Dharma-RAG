@@ -48,6 +48,9 @@ from src.rag.schemas import (
     SourceDocument,
     SourceParagraph,
     SourceTranslation,
+    ThreadCard,
+    ThreadRequest,
+    ThreadResponse,
 )
 from src.retrieval.hybrid import hybrid_search
 from src.retrieval.reranker import BGEReranker
@@ -283,6 +286,101 @@ class RAGService:
                 foundational_boost=foundational_effective,
                 n_candidates=n_candidates,
             ),
+        )
+
+    async def thread_next(self, request: ThreadRequest) -> ThreadResponse:
+        """Run a stateless thread round — retrieve, filter excluded, return cards.
+
+        LLM-free path (rag-day-36): we expand_parents=False so the
+        returned chunks are bite-sized children, then enrich each with
+        its pre-baked Contextual Retrieval prefix (rag-day-16) and
+        translator/language metadata. No prompting, no token cost — the
+        whole round is one Qdrant + BM25 retrieval + one Postgres JOIN.
+
+        ``exhausted`` is true when the pool returned fewer than
+        ``top_k`` fresh chunks; the frontend uses it to hide the
+        «Далее» button.
+        """
+        start = time.perf_counter()
+        settings = self._settings
+        collection = settings.retrieval_collection
+        excluded = set(request.excluded_chunk_ids or [])
+
+        # Over-fetch so post-filter still has top_k cards. The buffer
+        # accounts for excluded chunks already at the head of the
+        # ranked list — without it, a long thread would starve the
+        # response. Cap at the boost-pool ceiling to keep the JOIN
+        # bounded.
+        from src.retrieval.hybrid import DEFAULT_BOOST_POOL_LIMIT
+
+        internal_top_k = min(request.top_k + len(excluded) + 5, DEFAULT_BOOST_POOL_LIMIT)
+
+        async with self._session() as session:
+            hits, _timings = await hybrid_search(
+                query=request.query,
+                bm25_query=request.query,
+                encoder=self._encoder,
+                qdrant_client=self._qdrant,
+                db_session=session,
+                reranker=self._reranker,
+                top_k=internal_top_k,
+                rerank=False,
+                collection_name=collection,
+                expand_parents=False,
+            )
+
+            fresh = [h for h in hits if str(h.chunk_id) not in excluded]
+            top = fresh[: request.top_k]
+            exhausted = len(top) < request.top_k
+
+            cards: list[ThreadCard] = []
+            if top:
+                top_chunk_ids = [h.chunk_id for h in top]
+                rows = (
+                    await session.execute(
+                        sa.select(
+                            Chunk.id,
+                            Chunk.context_text,
+                            Expression.language_code,
+                            Author.slug.label("translator"),
+                        )
+                        .select_from(Chunk)
+                        .join(Instance, Instance.id == Chunk.instance_id)
+                        .join(Expression, Expression.id == Instance.expression_id)
+                        .outerjoin(Author, Author.id == Expression.author_id)
+                        .where(Chunk.id.in_(top_chunk_ids))
+                    )
+                ).all()
+                meta_by_id = {r.id: r for r in rows}
+
+                top_rrf = max((h.rrf_score for h in top), default=0.0)
+                for h in top:
+                    meta = meta_by_id.get(h.chunk_id)
+                    if meta is None:
+                        logger.warning(
+                            "thread_next: no metadata row for chunk %s",
+                            h.chunk_id,
+                        )
+                        continue
+                    cards.append(
+                        ThreadCard(
+                            chunk_id=str(h.chunk_id),
+                            work_canonical_id=h.work_canonical_id,
+                            segment_id=h.segment_id,
+                            text=h.text,
+                            context_text=meta.context_text,
+                            translator=meta.translator,
+                            language_code=meta.language_code,
+                            score=_normalise_score(h, top_rrf),
+                        )
+                    )
+
+        latency_ms = (time.perf_counter() - start) * 1000.0
+        return ThreadResponse(
+            query=request.query,
+            cards=cards,
+            exhausted=exhausted,
+            latency_ms=latency_ms,
         )
 
     async def get_source(self, canonical_id: str) -> SourceDocument | None:

@@ -55,6 +55,7 @@
 | [33 — Khuddaka Nikāya ingest](33-khuddaka-ingest.md) | rag-day-33 | ✅ |
 | [34 — Russian SC translations ingest](34-russian-sc-ingest.md) | rag-day-34 | ✅ |
 | [35 — Failure-driven curation + Context A/B](35-failure-driven-curation.md) | rag-day-35 | ✅ |
+| [36 — Бесконечный тред (LLM-free)](36-infinite-thread.md) | rag-day-36 | ✅ MVP |
 
 ## Что появится позже
 

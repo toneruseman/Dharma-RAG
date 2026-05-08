@@ -771,6 +771,152 @@
         "title": "SourceTranslation",
         "type": "object"
       },
+      "ThreadCard": {
+        "description": "One canonical passage card in the LLM-free thread.\n\nMapped from a child ``HybridHit`` (no parent expansion — children\nare bite-sized, ~384 tokens, exactly card-size). The Contextual\nRetrieval prefix (``context_text``, generated at ingest by Haiku\n3.5) gives the user a one-sentence \"what this passage is about\"\nintro for free; falls back to ``None`` for parent chunks or rows\nthe contextualiser hasn't visited yet.",
+        "properties": {
+          "chunk_id": {
+            "description": "Stable UUID hex of the chunk. Echo back in the next request's ``excluded_chunk_ids`` to avoid re-showing.",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "context_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Contextual Retrieval prefix (rag-day-16): a 1-3 sentence narrative intro generated at ingest. Use as a header above ``text`` to orient the reader. ``None`` when the chunk predates the contextualiser run.",
+            "title": "Context Text"
+          },
+          "language_code": {
+            "description": "Expression language code (``eng``, ``rus``, ``pli``).",
+            "title": "Language Code",
+            "type": "string"
+          },
+          "score": {
+            "description": "Normalised relevance score in [0, 1].",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SuttaCentral segment id when present (``mn10:12.3``).",
+            "title": "Segment Id"
+          },
+          "text": {
+            "description": "Canonical chunk text — the actual passage from the Pāli Canon, no synthesis applied. ~200-500 words for a child chunk.",
+            "title": "Text",
+            "type": "string"
+          },
+          "translator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Translator slug from ``author_t`` (``sujato``, ``thanissaro``, ``sv``…). ``None`` for compiled or anonymous editions.",
+            "title": "Translator"
+          },
+          "work_canonical_id": {
+            "description": "Stable canonical ID like ``mn10`` or ``sn56.11``.",
+            "title": "Work Canonical Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "work_canonical_id",
+          "text",
+          "language_code",
+          "score"
+        ],
+        "title": "ThreadCard",
+        "type": "object"
+      },
+      "ThreadRequest": {
+        "description": "Body of POST /api/thread/next.",
+        "properties": {
+          "excluded_chunk_ids": {
+            "description": "UUIDs of chunks already shown in earlier rounds. The server filters them out before truncating to ``top_k`` so each press of «Далее» surfaces fresh material. Pass back what the server returned in prior ``ThreadCard.chunk_id`` values — the client owns the dedup state, the server is stateless.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Excluded Chunk Ids",
+            "type": "array"
+          },
+          "query": {
+            "description": "User query",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "top_k": {
+            "default": 3,
+            "description": "Cards per round. Smaller than /api/query because each card is a self-contained passage the user reads end-to-end — 3 is the sweet spot for a single scroll-view.",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "ThreadRequest",
+        "type": "object"
+      },
+      "ThreadResponse": {
+        "description": "Body of the response from POST /api/thread/next.",
+        "properties": {
+          "cards": {
+            "description": "Next batch of passages, top-scoring first. Empty list when the retrieval pool is exhausted for this query — see ``exhausted``.",
+            "items": {
+              "$ref": "#/components/schemas/ThreadCard"
+            },
+            "title": "Cards",
+            "type": "array"
+          },
+          "exhausted": {
+            "description": "``True`` when fewer than ``top_k`` fresh passages remained after applying ``excluded_chunk_ids``. The frontend should hide the «Далее» button (or label it «End of thread»).",
+            "title": "Exhausted",
+            "type": "boolean"
+          },
+          "latency_ms": {
+            "description": "End-to-end wall-clock time in milliseconds.",
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "query": {
+            "description": "Echo of the user's query.",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "cards",
+          "exhausted",
+          "latency_ms"
+        ],
+        "title": "ThreadResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -816,7 +962,7 @@
   "info": {
     "description": "Open, citation-first RAG system for Buddhist teachings. Phase 1 MVP: health endpoint only.",
     "title": "Dharma RAG",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1032,6 +1178,47 @@
         "summary": "Full document body for the Reading Room",
         "tags": [
           "sources"
+        ]
+      }
+    },
+    "/api/thread/next": {
+      "post": {
+        "operationId": "thread_next_api_thread_next_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "LLM-free passage rotation — next batch of canonical chunks",
+        "tags": [
+          "thread"
         ]
       }
     },
