@@ -1,0 +1,308 @@
+# Curated foundational mapping (rag-day-28).
+#
+# Source: Sahaya (buddhistcompanion.com) 12 essential suttas + selected
+# topical guides + MN 10 "If this landed" cross-refs, supplemented with
+# six high-frequency definitional terms from QA040_INVESTIGATION
+# (vipassana, jhana, right view, kamma, nibbana, five precepts).
+#
+# Used by `src/expand/foundational.py` to detect when a user query
+# names a canonical Buddhist term and to apply a post-RRF boost on
+# the foundational sutta(s) for that term, lifting them above
+# derivative texts that share the term's surface form.
+#
+# Why per-entry boost varies: 1.5 for single-sutta canonical
+# first-source (e.g. SN 56.11 for the Four Noble Truths); 1.4 for
+# multi-work or supplementary terms where the boost should not
+# fully dominate organic ranking.
+#
+# Curation backlog (B-001, buddhologist): expand to 30-50 pairs,
+# verify aliases for Russian translations, add edge cases (e.g.
+# saṃyojana, indriya, bojjhaṅga). See docs/concepts/28-definitional-expansion.md.
+
+# === Sahaya 12 essential suttas ===
+
+- term: four noble truths
+  aliases:
+    - 4 noble truths
+    - dukkha
+    - дуккха
+    - suffering
+    - четыре благородные истины
+    - истины о страдании
+    - dhammacakkappavattana
+    - first sermon
+  works: [sn56.11]
+  boost: 1.5
+
+- term: two arrows
+  aliases:
+    - second arrow
+    - sallatha
+    - two darts
+    - две стрелы
+    - вторая стрела
+  works: [sn36.6]
+  boost: 1.5
+
+- term: anatta
+  aliases:
+    - non-self
+    - not-self
+    - анатта
+    - не-я
+    - отсутствие я
+    - anatta-lakkhana
+  works: [sn22.59]
+  boost: 1.5
+
+- term: dependent origination
+  aliases:
+    - paticcasamuppada
+    - paṭiccasamuppāda
+    - патиччасамуппада
+    - взаимозависимое возникновение
+    - обусловленное возникновение
+    - 12 нидан
+    - двенадцать нидан
+    - двенадцать звеньев
+    - dependent arising
+  works: [sn12.2]
+  boost: 1.5
+
+- term: satipaṭṭhāna
+  aliases:
+    - satipatthana
+    - сатипаттхана
+    - mindfulness foundations
+    - four foundations of mindfulness
+    - основы внимательности
+    - mahasatipatthana
+  works: [mn10, dn22]
+  boost: 1.5
+
+- term: anapanasati
+  aliases:
+    - ānāpānasati
+    - breath meditation
+    - mindfulness of breathing
+    - анапанасати
+    - медитация на дыхании
+  works: [mn118]
+  boost: 1.5
+
+# `balanced effort` and `right effort` are *different* concepts:
+# balanced effort = sona sutta lute simile (AN 6.55, about
+# not-too-tight / not-too-slack); right effort (sammā-vāyāma) = the
+# 6th factor of the Noble Eightfold Path, taught in MN 117 / AN 4.13.
+# Earlier rag-day-28 entry overlapped them — fixed in rag-day-32.
+- term: balanced effort
+  aliases:
+    - sona
+    - sona sutta
+    - средние усилия
+    - lute simile
+  works: [an6.55]
+  boost: 1.5
+
+- term: right effort
+  aliases:
+    - sammā-vāyāma
+    - samma-vayama
+    - правильное усилие
+    - правильное старание
+    - four right efforts
+    - four right strivings
+  works: [mn117, an4.13]
+  boost: 1.4
+
+- term: metta
+  aliases:
+    - mettā
+    - loving-kindness
+    - метта
+    - доброжелательность
+    - karaṇīya-mettā
+    - karaniya metta
+  works: [snp1.8]
+  boost: 1.5
+
+- term: analysis of the truths
+  aliases:
+    - saccavibhaṅga
+    - saccavibhanga
+    - analysis of the four noble truths
+    - анализ истин
+  works: [mn141]
+  boost: 1.5
+
+- term: noble eightfold path
+  aliases:
+    - eightfold path
+    - восьмеричный путь
+    - magga
+    - ariya aṭṭhaṅgika magga
+    - ariyo atthangiko maggo
+  works: [sn45.8]
+  boost: 1.5
+
+- term: lay ethics
+  aliases:
+    - sigalovada
+    - sigālovāda
+    - sigalaka
+    - advice to sigalaka
+    - lay life
+    - householder ethics
+    - этика мирянина
+    - advice to sigala
+    - sīla
+    - sila
+    - шила
+    - нравственность
+    - virtue
+  works: [dn31]
+  boost: 1.5
+
+# Earlier rag-day-28 entry over-fired on broad `impermanence` /
+# `anicca` aliases that send the BM25 channel after every
+# impermanence-themed sutta — pushing sn22.95 down on its own
+# definitional query. Trimmed to phena-specific aliases in rag-day-32.
+- term: foam similes
+  aliases:
+    - phena
+    - foam
+    - simile of foam
+    - foam simile
+  works: [sn22.95]
+  boost: 1.4
+
+# === Дополнения из частых definitional-кейсов QA040 ===
+
+- term: vipassana
+  aliases:
+    - випассана
+    - insight
+    - prajna
+    - paññā
+    - прозрение
+  works: [mn10, dn22]
+  boost: 1.4
+
+- term: jhana
+  aliases:
+    - jhāna
+    - джхана
+    - meditative absorption
+    - samādhi-jhāna
+    - поглощение
+  works: [mn118, an6.55]
+  boost: 1.4
+
+- term: right view
+  aliases:
+    - sammā-diṭṭhi
+    - sammaditthi
+    - правильное воззрение
+    - mahacattarisaka
+  works: [mn117, mn41, mn9]
+  boost: 1.5
+
+- term: kamma
+  aliases:
+    - karma
+    - карма
+    - kammavipāka
+    - действие и плод
+  works: [mn135, an6.63]
+  boost: 1.4
+
+- term: nibbana
+  aliases:
+    - nirvana
+    - ниббана
+    - нирвана
+    - ending of dukkha
+    - освобождение
+  works: [sn43.14, ud8.1, ud8.3]
+  boost: 1.4
+
+- term: five precepts
+  aliases:
+    - pañca-sīla
+    - panca sila
+    - пять обетов
+    - пять предписаний
+    - five training rules
+  works: [an8.39, sn55.7]
+  boost: 1.4
+
+# === rag-day-30: Russian foundational expansion ===
+# Термины с чётким каноническим первоисточником, частые в русских
+# definitional-запросах. См. docs/concepts/30-russian-foundational-expansion.md.
+
+# Aliases use Sujato's actual translation choices (verified against
+# corpus): samādhi → "immersion" (not "concentration"), bojjhaṅga →
+# "awakening factor", brahmavihāra → "divine abode", iddhipāda →
+# "bases of psychic power", tisaraṇa → "go for refuge". Diagnostic:
+# BM25 over chunk.fts_vector returned ~0 hits for the dictionary
+# translations and 1700+ hits for Sujato's choices.
+
+- term: samadhi
+  aliases:
+    - samādhi
+    - самадхи
+    - сосредоточение
+    - концентрация
+    - медитативное погружение
+    - immersion
+    - immersion further
+    - ways of developing immersion
+    - development of immersion
+  works: [an4.41]
+  boost: 1.4
+
+- term: bojjhanga
+  aliases:
+    - bojjhaṅga
+    - боджжанга
+    - факторы пробуждения
+    - семь факторов пробуждения
+    - семь факторов просветления
+    - awakening factors
+    - seven awakening factors
+  works: [sn46.3, sn46.51]
+  boost: 1.4
+
+- term: brahmavihara
+  aliases:
+    - brahmavihāra
+    - брахмавихара
+    - четыре безмерных
+    - четыре божественных пребывания
+    - divine abodes
+    - four immeasurables
+  works: [dn13]
+  boost: 1.4
+
+- term: three refuges
+  aliases:
+    - tisaraṇa
+    - tisarana
+    - трисарана
+    - три прибежища
+    - прибежище
+    - go for refuge
+    - going for refuge
+    - taking refuge
+  works: [an6.10]
+  boost: 1.4
+
+- term: iddhipada
+  aliases:
+    - iddhipāda
+    - иддхипада
+    - основы могущества
+    - основы достижений
+    - bases of psychic power
+  works: [sn51.13]
+  boost: 1.3

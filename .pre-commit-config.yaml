@@ -10,6 +10,15 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
         args: ['--maxkb=1000']
+        # data/glossary/dpd_full.json (~10 MB) is the parsed Pāli
+        # glossary derived from ms-dpd (rag-day-23). It IS committed
+        # because runtime needs it and we control its contents (rebuild
+        # via scripts/build_dpd_glossary.py). Other large files should
+        # still be caught by the default 1 MB cap.
+        exclude: |
+          (?x)^(
+            data/glossary/dpd_full\.json
+          )$
       - id: check-merge-conflict
       - id: check-toml
       - id: check-json
@@ -45,4 +54,13 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: package.lock.json
+        # Lockfiles contain cryptographic content hashes (SHA-512 base64)
+        # that detect-secrets flags as Base64-high-entropy. They are not
+        # secrets — they are reproducible-build attestations. The other
+        # hooks in this file still scan source code as before.
+        exclude: |
+          (?x)^(
+            package\.lock\.json
+            |pnpm-lock\.yaml
+            |web/pnpm-lock\.yaml
+          )$

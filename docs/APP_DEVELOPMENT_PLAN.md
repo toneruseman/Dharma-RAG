@@ -9,11 +9,26 @@
 > потребляет RAG-сервис через API-контракт, но не описывает его
 > внутренности.
 
-- **Версия плана:** 2026-04-21
+- **Версия плана:** 2026-05-01 (изначально 2026-04-21)
 - **Связанные документы:**
   - Архитектурные решения: [`docs/decisions/0001-phase1-architecture.md`](decisions/0001-phase1-architecture.md)
   - Полный контекст проекта: [`docs/Dharma-RAG.md`](Dharma-RAG.md)
   - План RAG-ядра: [`docs/RAG_DEVELOPMENT_PLAN.md`](RAG_DEVELOPMENT_PLAN.md)
+  - Roadmap фич за пределами Phase 1: [`docs/FEATURE_ROADMAP.md`](FEATURE_ROADMAP.md)
+
+> **Обновление 2026-05-01.** План был задуман как линейный поток дней
+> 1 → 60. На практике порядок оказался другим: rag-трек выкатил
+> `/api/query` (rag-day-19) и `/api/answer` (rag-day-24) **раньше**
+> чем app-track дошёл до Phase 1, поэтому большая часть «Backend MVP»
+> (старые дни 6-20) либо уже сделана rag-track'ом, либо передвинута
+> ближе к pre-launch'у. App-day-22 (chat MVP) **вынесли вперёд** из
+> Phase 4 — backend был готов, frontend оказался единственным
+> блокером. Полный mapping старых → новых дней в разделе
+> [«Реальный ход реализации»](#реальный-ход-реализации) ниже.
+>
+> Историческое содержимое плана (Phase 0-7+ дни 1-60) сохранено как
+> архив проектных решений; текущая нумерация и приоритеты — в
+> разделе «Реальный ход» и в [`docs/concepts/INDEX.md`](concepts/INDEX.md).
 
 ---
 
@@ -40,26 +55,142 @@
 
 ## Что уже есть в репо
 
-По состоянию на **2026-04-21**, ветка `dev`:
+По состоянию на **2026-05-01**, ветка `dev` (закрытые PR + локально на `feat/app-day-22-chat-mvp`):
 
-- **Python 3.12** проект, flat `src/` layout
-- `pyproject.toml` с hatchling + pinned зависимостями (FastAPI, Claude,
-  BGE-M3, Qdrant, Langfuse и т. д.)
-- **Day 1 done:** FastAPI `/health` endpoint, `src/api/app.py`
-- `src/config.py` — Pydantic Settings из `.env`
-- `src/logging_config.py` — structlog
-- `src/cli.py` — entry point `dharma-rag`
-- `docker-compose.yml` — Qdrant 1.12.4 + Langfuse (v2 + Postgres)
-- Pre-commit hooks (ruff + mypy + detect-secrets)
-- Tests: `tests/unit/test_api_health.py` + `test_config.py` + `test_logging.py`
-- ADR-0001 (2026-04-21) — зафиксированы окончательные параметры Phase 1
+### Python / RAG-слой (rag-track)
 
-**Что ADR важно для app-слоя:**
+- **Python 3.12+** проект, flat `src/` layout
+- `pyproject.toml` (hatchling), pinned зависимости
+- FastAPI app c эндпойнтами:
+  - `GET /health` (rag-day-1)
+  - `POST /api/retrieve` — диагностический (rag-day-12)
+  - `POST /api/query` — стабильный production (rag-day-19)
+  - `POST /api/answer` — LLM-генерация с inline-цитатами (rag-day-24)
+  - `GET /api/sources/{canonical_id}` — Reading Room source (app-day-21)
+- Корпус: SuttaCentral ingest (~600+ Works, ~6500 child-chunks в `dharma_v2`)
+- Hybrid retrieval: BGE-M3 dense + sparse + Postgres BM25 + RRF + reranker
+- Contextual Retrieval (rag-day-16) через OpenRouter, dharma_v2 коллекция
+- Pāli-glossary (DPD 50K + manual cyrillic 155 терминов)
+- Eval framework: golden v0.0+v0.0e+pali_targeted, `make eval` workflow готов
+- Observability: OpenTelemetry → Phoenix
+- `docker-compose.yml`: dharma-db (Postgres 16) + qdrant (1.12.4) + phoenix + langfuse
+- Тесты: 378 unit-тестов, mypy strict, ruff clean, pre-commit hooks
+
+### Frontend / app-слой (app-track)
+
+- Next.js 16 + Turbopack + Tailwind 4 + shadcn/ui (`base-nova` style)
+- Pnpm workspace в корне (web/ + потенциальный packages/*)
+- `web/lib/api-client.ts`: type-safe обёртка над `getHealth/query/ask/getSource`
+- `web/lib/api-types.ts`: автогенерированный из `openapi.json`
+- Layout: theme-toggle (light/dark), Header/Footer, Inter + Noto Serif
+  (полное покрытие палийских диакритик)
+- Страницы:
+  - `/` — landing с тремя карточками
+  - `/read` — index Reading Room
+  - `/read/[uid]` — Reading Room MVP (server component)
+  - `/chat` — Chat MVP (client component, single-shot)
+- Components: theme-provider/toggle, layout/{Header,Footer},
+  reader/{SourceHeader,SourceBody}, chat/{ChatInput,AnswerView,SourcesPanel}
+- Citations parser (`web/lib/citations.ts`) с hallucinated-citation guard
+- CORS middleware на бэке для localhost:3001 dev origin
+
+### Что ADR-0001 важно для app-слоя
 
 - Python 3.12+, flat `src/`, импорты `from src.config import …`
-- BYOK паттерн для Claude (пользователь приносит свой ключ)
-- Observability: миграция Langfuse → Phoenix на Day 9 Phase 1 RAG
+- BYOK паттерн для Claude (пользователь приносит свой ключ) — реализуется в app-day-28
+- Observability: Phoenix вместо Langfuse (миграция завершена в rag-day-9)
 - FP16 quantization в Qdrant, named vectors
+
+---
+
+## Реальный ход реализации
+
+Где какие старые дни оказались — для навигации между этим документом и
+актуальным состоянием.
+
+### Phase 0 (Bootstrap, дни 1-5)
+
+| Старый | Что | Реальный статус |
+|---|---|---|
+| app-day-01 | Monorepo skeleton | ✓ влит |
+| app-day-02 | RAG mock + контракт-заглушки | ✓ влит |
+| app-day-03 | OpenAPI typegen | ✓ влит (PR #38) |
+| app-day-04 | Структура Next.js + базовый layout | ✓ влит (PR #39) |
+| app-day-05 | Dev-friendly Docker Compose с web | ⏸ отложено до **app-day-55** (production Docker Compose); сейчас `pnpm dev` работает напрямую |
+
+### Phase 1 (Backend MVP, дни 6-20)
+
+Большая часть либо сделана rag-track'ом, либо отложена ближе к launch'у —
+до публичного запуска без guardrails можно работать локально / для себя.
+
+| Старый | Что | Реальный статус |
+|---|---|---|
+| app-day-06 | Postgres app-таблицы (`audit_log`, `feedback`, `rate_limit`) | ⏸ migration напишем когда понадобятся (`feedback` в **app-day-26**, `audit_log` в **app-day-49**) |
+| app-day-07 | Middleware: trace, logging, rate-limit, CORS | ⚠ CORS — ✓ (2026-05-01); trace-id — ✓ через OpenTelemetry; structlog — ✓; rate-limit — ⏸ до **app-day-45** |
+| app-day-08 | `POST /api/search` | ✓ заменено на `/api/query` (rag-day-19) |
+| app-day-09 | `POST /api/explain` | ✓ покрыто `/api/answer` (rag-day-24) |
+| app-day-10 | `POST /api/query/stream` (SSE) | ⏸ переехало в **app-day-25** + `rag-day-25` |
+| app-day-11 | `GET /api/sources/{uid}` | ✓ сделано в **app-day-21** |
+| app-day-12 | BYOK валидатор | ⏸ → **app-day-28** |
+| app-day-13 | BYOK cookie sessions | ⏸ → **app-day-28** |
+| app-day-14 | Передача BYOK в RAG-слой | ⏸ → **app-day-28** |
+| app-day-15 | Crisis classifier | ⏸ → **app-day-46** |
+| app-day-16 | Crisis kill-switch | ⏸ → **app-day-46** |
+| app-day-17 | Wellbeing guardrail | ⏸ → **app-day-47** |
+| app-day-18 | Vajrayana restricted flag | ⏸ → **app-day-48** |
+| app-day-19 | Audit log + публичный endpoint | ⏸ → **app-day-49** |
+| app-day-20 | GDPR endpoints | ⏸ → **app-day-50** |
+
+### Phase 2 (Reading Room, дни 21-30)
+
+Только day-21 закрыт (MVP). Остальные дни **сдвинуты** после chat-polish'а
+(дни 23-28) — chat вынесен вперёд из Phase 4.
+
+| Старый | Что | Реальный статус |
+|---|---|---|
+| app-day-21 | Страница `/read/[source_id]` | ✓ сделано (commit `db514f4`, PR #40 ждёт GitHub) |
+| app-day-22 | Outline + навигация для Reading Room | ⏸ переехало на **app-day-29** |
+| app-day-23 | Hover-glossary | ⏸ → **app-day-30** |
+| app-day-24 | Bookmarks | ⏸ → **app-day-31** |
+| app-day-25 | Highlights | ⏸ → **app-day-32** |
+| app-day-26 | Adjacent-chunks explorer | ⏸ → **app-day-33** |
+| app-day-27 | Parallel translations split-view | ⏸ → **app-day-34** |
+| app-day-28 | Print-friendly | ⏸ → **app-day-35** |
+| app-day-29 | Shareable links | ⏸ → **app-day-36** |
+| app-day-30 | Reading Room performance pass | ⏸ → **app-day-37** |
+
+### Новая реальность: app-day-22 = chat MVP (вынос из Phase 4)
+
+Backend `/api/answer` готов с rag-day-24, frontend оставался единственным
+блокером. Перенесли chat-полностью в текущий focus.
+
+| Новый день | Что |
+|---|---|
+| **app-day-22** | Chat MVP — `/chat` page + `<ChatInput>` + `<AnswerView>` (citation-badges) + `<SourcesPanel>` + `lib/citations.ts` parser. ✓ commit `4afcc13` локально |
+| **app-day-23** | Hover-preview citations |
+| **app-day-24** | Confidence indicator |
+| **app-day-25** | SSE streaming (frontend EventSource + backend `rag-day-25` SSE-эндпойнт) |
+| **app-day-26** | Feedback widget (👍/👎) + миграция `feedback` table (объединяет старый app-day-06) |
+| **app-day-27** | Pull-quote side panel |
+| **app-day-28** | BYOK UI (объединяет старые app-day-12/13/14) |
+
+### Phase 3 (Search UI) — переехало на дни 38-44
+
+Старая нумерация 31-37 сдвигается на +7.
+
+### Phase 5+ (Pre-launch и Launch) — переехало на 45-60
+
+Старая нумерация в плане 46-60. Сдвиг на −1 потому что app-day-45
+(middleware/rate-limit) забирает себе одну из старых guardrails-позиций.
+
+### Что фактически удалено из плана
+
+- **app-day-05** не «удалён», но deferred до production. Local-dev
+  работает без Docker'изации web'а.
+- **app-day-08, 09, 11** заменены rag-trackом — без отдельной работы
+  на app-стороне.
+
+---
 
 ---
 
@@ -235,12 +366,19 @@ Phase 0-6 описаны day-by-day ниже. Phase 7+ — общим обзор
 
 ---
 
-## Phase 0: Bootstrap app-слоя (дни 1-5)
+## Phase 0: Bootstrap app-слоя (дни 1-5) — ✓ закрыто (один день deferred)
 
 > **Важно про нумерацию:** «Day N» в этом плане считается от **начала
 > app-трека**, а не от начала всего проекта. В репо уже есть «Day 1»
 > от RAG-трека (FastAPI `/health`). Во избежание путаницы в commit
 > messages пишем `app-day-01`, `rag-day-08` и т. д.
+
+**Статус (2026-05-01):** дни 01-04 влиты, день 05 (Docker Compose с
+web-сервисом) отложен до **app-day-55** (production Docker Compose
+вместе с deploy). Local-dev работает без Docker'изации web'а — `pnpm dev`
+запускает Next.js напрямую, бэкенд через uvicorn. Описание ниже —
+исторический архив; актуальное состояние в разделе «Реальный ход
+реализации».
 
 ### app-day-01 — Monorepo skeleton
 
@@ -357,11 +495,18 @@ good failure.
 
 ---
 
-## Phase 1: Backend MVP (дни 6-20)
+## Phase 1: Backend MVP (дни 6-20) — переорганизовано
 
 Основная задача — довести `src/api/` до состояния, когда на нём можно
 строить UI. Внутри пишем реальные роутеры, middleware, BYOK, guardrails
 заглушки. RAG всё ещё через stub.
+
+**Статус (2026-05-01):** Phase 1 в первоначальном виде **расформирована**.
+Большая часть пунктов либо реализована rag-track'ом раньше срока (`/api/search`
+→ `/api/query`, `/api/explain` → `/api/answer`), либо передвинута ближе
+к pre-launch'у (BYOK → app-day-28, guardrails → app-day-45..50). См.
+полный mapping в разделе «Реальный ход реализации». Содержание ниже —
+исходный архив проектных решений.
 
 ### app-day-06 — Postgres schema для app-таблиц
 
@@ -512,9 +657,17 @@ meditation», «depersonalization from vipassana» и т. д. Response
 
 ---
 
-## Phase 2: Reading Room (дни 21-30)
+## Phase 2: Reading Room (дни 21-30) — частично закрыто
 
 Главный surface проекта по философии «тексты — это святое».
+
+**Статус (2026-05-01):** **app-day-21** (Reading Room MVP — `/read/{uid}` +
+`GET /api/sources/{uid}`) сделан и сидит локально на ветке
+`feat/app-day-21-reading-room` (PR #40 ждёт восстановления GitHub-аккаунта).
+Содержание дней 22-30 (outline / glossary / bookmarks / highlights /
+adjacent / split-view / print / share / perf) **сдвинуто** в новую
+нумерацию app-day-29..37 — после chat-polish'а (23-28). Причина — chat
+оказался ценнее прямо сейчас (бэкенд готов, frontend был блокером).
 
 ### app-day-21 — Страница `/read/[source_id]`
 
@@ -603,9 +756,13 @@ meditation», «depersonalization from vipassana» и т. д. Response
 
 ---
 
-## Phase 3: Search UI (дни 31-37)
+## Phase 3: Search UI (дни 31-37) — переехало на 38-44
 
 Второй по важности surface — «search-first» UX.
+
+**Статус (2026-05-01):** не начато. В новой нумерации эта фаза занимает
+дни **38-44** (после chat polish 23-28 и Reading Room polish 29-37).
+Содержание ниже актуально, только номера дней сдвинутся +7.
 
 ### app-day-31 — Страница `/search`
 
@@ -667,7 +824,16 @@ score).
 
 ---
 
-## Phase 4: Chat Q&A (дни 38-45)
+## Phase 4: Chat Q&A (дни 38-45) — частично закрыто, остальное вынесено вперёд
+
+**Статус (2026-05-01):** chat вынесен вперёд из этой фазы. **app-day-22
+chat MVP** уже сделан (single-shot Q&A: textarea → `/api/answer` →
+linkified citations + sources panel). Полированные элементы (streaming,
+citations hover-preview, confidence indicator, feedback, BYOK,
+disclaimer) распределены по новой нумерации **app-day-23..28** и
+**app-day-45** (footer disclaimer уже в base layout, расширенный — с launch).
+Содержание ниже — оригинальная декомпозиция, дни в ней соответствуют
+новым 23-28 + 45.
 
 ### app-day-38 — Страница `/chat`
 
@@ -740,7 +906,12 @@ score).
 
 ---
 
-## Phase 5: Guardrails и Privacy (дни 46-52)
+## Phase 5: Guardrails и Privacy (дни 46-52) — переехало на 45-52
+
+**Статус (2026-05-01):** не начато. В новой нумерации эта фаза занимает
+дни **45-52** — content тот же, нумерация смещена потому что app-day-45
+(middleware + rate-limit) забирает себе функцию из старого app-day-07.
+См. полный mapping в разделе «Реальный ход реализации».
 
 ### app-day-46 — Crisis UI
 
@@ -808,7 +979,12 @@ chat-response — визуально другое.
 
 ---
 
-## Phase 6: Deploy и Launch v0.1.0 (дни 53-60)
+## Phase 6: Deploy и Launch v0.1.0 (дни 53-60) — без изменений
+
+**Статус (2026-05-01):** не начато. Нумерация дней совпадает с новой
+(53-60). Дополнительно app-day-55 поглощает старый app-day-05 (Docker
+Compose с web — оригинально планировался для dev, теперь делаем сразу
+production-grade).
 
 ### app-day-53 — Hetzner provisioning
 
@@ -896,6 +1072,11 @@ chat-response — визуально другое.
 ---
 
 ## Phase 7+: Mobile, Voice, Scale
+
+**Статус (2026-05-01):** не начато. Содержание актуально без изменений.
+Дополнительные idea-tier фичи — в [`docs/FEATURE_ROADMAP.md`](FEATURE_ROADMAP.md):
+13 фич в 5 уровнях, top-5 next: «Спроси у учителя», daily reading,
+adaptive timer, контекстный поиск по talk'е, AI-guided retreat.
 
 Детализируется в отдельных документах по мере приближения. Ключевые
 вехи:

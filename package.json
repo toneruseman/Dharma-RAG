@@ -1,0 +1,25 @@
+{
+  "name": "dharma-rag",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source multilingual RAG for Buddhist contemplative teachings (monorepo: src/ Python RAG + web/ Next.js UI)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "uvicorn src.api.app:app --reload",
+    "dev": "concurrently -n web,api -c blue,green \"pnpm dev:web\" \"pnpm dev:api\"",
+    "build:web": "pnpm --filter web build",
+    "lint:web": "pnpm --filter web lint",
+    "gen:openapi": "python scripts/export_openapi.py",
+    "check:openapi": "python scripts/export_openapi.py --check",
+    "gen:api-types": "pnpm gen:openapi && pnpm --filter web typegen"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "packageManager": "pnpm@10.33.2"
+}

@@ -1,0 +1,17 @@
+# pnpm monorepo definition for Dharma-RAG.
+#
+# The Python RAG (src/) is managed by pyproject.toml + uv/pip and is
+# NOT a pnpm package. Only the JS/TS surfaces below participate in the
+# pnpm workspace.
+
+packages:
+  - "web"
+  - "packages/*"
+
+# sharp / unrs-resolver ship native binaries via lifecycle scripts; we
+# trust them in this dev workspace. Next.js 16 install adds these to
+# its own workspace file by default — we hoist the config to the root
+# so the pnpm install at the root sees a single workspace definition.
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

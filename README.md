@@ -137,25 +137,56 @@ Dharma-RAG/
 │   ├── public-domain/              ← CC0, public domain
 │   ├── open-license/               ← CC-BY, CC-BY-NC, etc.
 │   └── explicit-permission/        ← content used with explicit author permission
-├── src/
-│   ├── api/                        ← FastAPI app (`/health` so far)
+├── src/                            ← Python RAG (managed by pyproject.toml)
+│   ├── api/                        ← FastAPI app: /health, /api/retrieve, /api/query
+│   ├── rag/                        ← stable production retrieval contract
+│   ├── retrieval/                  ← hybrid search (dense + sparse + BM25 + RRF + rerank)
+│   ├── embeddings/                 ← BGE-M3 encoder + Qdrant indexer
+│   ├── contextual/                 ← Anthropic Contextual Retrieval (dharma_v2)
+│   ├── eval/                       ← golden set loader, ref_hit / MRR metrics, runner
+│   ├── observability/              ← Phoenix tracing wiring
 │   ├── config.py                   ← Pydantic Settings
 │   ├── db/                         ← SQLAlchemy 2.x FRBR models + async sessions
 │   ├── ingest/suttacentral/        ← bilara parser + Postgres loader
 │   ├── processing/                 ← cleaner (NFC, IAST, ASCII fold), chunker
 │   ├── logging_config.py           ← structlog
 │   └── cli.py                      ← command-line utilities
+├── web/                            ← Next.js 16 app, App Router + Tailwind 4 + shadcn/ui
+│   ├── app/                        ← routes (URL = folder structure)
+│   ├── components/ui/              ← shadcn-installed components
+│   ├── lib/utils.ts                ← shadcn `cn()` helper
+│   └── package.json                ← scripts: dev (port 3001), build, lint
 ├── scripts/
 │   ├── ingest_sc.py                ← CLI for SuttaCentral ingest
-│   ├── sc_dryrun.py                ← parser smoke test (10 records)
-│   ├── reclean_chunks.py           ← backfill cleaner on existing rows
-│   └── rechunk.py                  ← backfill parent/child chunker
+│   ├── contextualize_corpus.py     ← Contextual Retrieval batch (OpenRouter / Haiku)
+│   ├── reindex_qdrant_v2.py        ← re-encode contextualized chunks into dharma_v2
+│   ├── eval_retrieval.py           ← baseline eval (rerank A/B)
+│   ├── eval_contextual_ab.py       ← day-17 v1 vs v2 A/B
+│   ├── eval_ablation_v0.0e.py      ← day-22 8-cell ablation matrix
+│   └── …                           ← rechunk, smoke_*, etc.
 ├── tests/
-│   ├── unit/                       ← fast tests, no DB (65 total)
-│   ├── integration/                ← Postgres-backed tests (14 total)
-│   └── eval/                       ← golden set (adds with buddhologist — blocker #8)
+│   ├── unit/                       ← fast tests, no DB (286 total)
+│   └── integration/                ← Postgres-backed tests
+├── package.json + pnpm-workspace.yaml  ← root JS monorepo (pnpm workspace = `web/`)
 └── data/                           ← gitignored: raw/, processed/, qdrant_storage/
 ```
+
+### Running both stacks
+
+From the repo root:
+
+```bash
+# Python RAG (FastAPI on :8000)
+pnpm dev:api
+
+# Web UI (Next.js on :3001)
+pnpm dev:web
+
+# Both at once (uses concurrently)
+pnpm dev
+```
+
+`pnpm install` once in the root pulls Node deps for `web/`. No global pnpm install needed long-term — `package.json` declares `packageManager: pnpm@…` so [Corepack](https://nodejs.org/api/corepack.html) (built into Node 20+) can resolve it; if Corepack isn't available, `npm install -g pnpm` works too.
 
 ---
 

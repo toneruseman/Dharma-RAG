@@ -138,23 +138,23 @@ set, fine-tuning и Pali glossary.
 
 ### Неделя 4 — Расширение golden set и ablation (дни 22-28)
 
-| День | Задача | Результат |
-|---|---|---|
-| **22-23** | Буддолог пишет 70 новых вопросов (итого 100). Категории: factoid, definitional, citation, multi-hop, comparative, adversarial. Включая русские. | Golden v0.2 (100 QA) |
-| **24** | Буддолог оценивает 30 ответов v0.1 по 5-балльной рубрике. Krippendorff α. | Первые doctrinal оценки, α известен |
-| **25** | Ablation study: разные конфигурации (with/without Contextual, with/without rerank, разные RRF-веса). | Каждый компонент pipeline вносит вклад |
-| **26** | Failure analysis: 10 худших запросов вручную. Категоризация. | `docs/FAILURE_PATTERNS.md` |
-| **27-28** | Буфер + CI integration: `make eval` блокирует commit при падении ref_hit@5 >5pp. | Регрессии ловятся автоматически |
+| День      | Задача                                                                                                                                          | Результат                              |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| **22-23** | Буддолог пишет 70 новых вопросов (итого 100). Категории: factoid, definitional, citation, multi-hop, comparative, adversarial. Включая русские. | Golden v0.2 (100 QA)                   |
+| **24**    | Буддолог оценивает 30 ответов v0.1 по 5-балльной рубрике. Krippendorff α.                                                                       | Первые doctrinal оценки, α известен    |
+| **25**    | Ablation study: разные конфигурации (with/without Contextual, with/without rerank, разные RRF-веса).                                            | Каждый компонент pipeline вносит вклад |
+| **26**    | Failure analysis: 10 худших запросов вручную. Категоризация.                                                                                    | `docs/FAILURE_PATTERNS.md`             |
+| **27-28** | Буфер + CI integration: `make eval` блокирует commit при падении ref_hit@5 >5pp.                                                                | Регрессии ловятся автоматически        |
 
 ### Неделя 5 — Pali glossary и query expansion (дни 29-35)
 
-| День | Задача | Результат |
-|---|---|---|
-| **29-30** | Импорт PTS Pali-English Dictionary (машиночитаемый). Парсер в YAML: term, variants, translations, category, sutta_refs. | ~1000 терминов в `data/glossary/pali.yaml` |
-| **31** | Digital Pali Dictionary (Bodhirasa) для расширения. | Glossary до ~3000 записей |
-| **32** | Query expansion pipeline: при запросе проверяем glossary, добавляем варианты написания (*satipaṭṭhāna* → *satipatthana*, *sati-patthana*). | Endpoint учитывает варианты |
-| **33** | Regression eval на golden v0.2 с glossary. | +5-10 pp на лексических запросах |
-| **34-35** | Буфер + обновление docs. | Документация актуальна |
+| День      | Задача                                                                                                                                     | Результат                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| **29-30** | Импорт PTS Pali-English Dictionary (машиночитаемый). Парсер в YAML: term, variants, translations, category, sutta_refs.                    | ~1000 терминов в `data/glossary/pali.yaml` |
+| **31**    | Digital Pali Dictionary (Bodhirasa) для расширения.                                                                                        | Glossary до ~3000 записей                  |
+| **32**    | Query expansion pipeline: при запросе проверяем glossary, добавляем варианты написания (*satipaṭṭhāna* → *satipatthana*, *sati-patthana*). | Endpoint учитывает варианты                |
+| **33**    | Regression eval на golden v0.2 с glossary.                                                                                                 | +5-10 pp на лексических запросах           |
+| **34-35** | Буфер + обновление docs.                                                                                                                   | Документация актуальна                     |
 
 ### Неделя 6 — Fine-tuning BGE-M3 (дни 36-45)
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -57,6 +58,84 @@ class Settings(BaseSettings):
     retrieval_collection: str = Field(default="dharma_v2")
     retrieval_rerank_default: bool = Field(default=False)
     retrieval_expand_parents_default: bool = Field(default=True)
+
+    # --- Answer generation (rag-day-24) ---
+    # OpenRouter model used by ``AnswerService`` to synthesise the
+    # ``POST /api/answer`` response. Format follows OpenRouter's
+    # ``vendor/model`` convention.
+    #
+    # Default ``deepseek/deepseek-v4-flash`` chosen after a 16-model
+    # comparison on a typical Pāli-canon question
+    # (``docs/EVAL_ANSWER_MODELS.md``):
+    #   * ~14-25 s end-to-end (vs ~40-48 s for Opus 4.6).
+    #   * ~$0.003 per request (vs $0.10 for Opus, $0.014 for prior
+    #     Haiku 4.5 default).
+    #   * A− quality: full Pāli with diacritics, all four canonical
+    #     similes (banker / lake / lotus / white cloth), prerequisites
+    #     section, 9 progressive meditations, three higher knowledges.
+    # Per-request ``model`` override allows A/B without restart;
+    # ``answer_llm_model_premium`` below for the slow-but-rich variant.
+    answer_llm_model: str = Field(default="deepseek/deepseek-v4-flash")
+
+    # Premium-tier model for future ``/api/answer?premium=true`` or a
+    # dedicated slow endpoint. Reserved here so operators can swap the
+    # premium choice via env without code change.
+    #
+    # Default ``moonshotai/kimi-k2-thinking`` — produces the longest,
+    # most structured answers in the comparison (~2667 output tokens,
+    # ~$0.012 per request); only Opus 4.6 surpasses it (and at 8× cost).
+    # Switch to ``anthropic/claude-opus-4.6`` if you want the unique
+    # ``anupubba-nirodha`` (per-jhāna cessation) section that only Opus
+    # produced reliably.
+    answer_llm_model_premium: str = Field(default="moonshotai/kimi-k2-thinking")
+
+    # Default verbosity / structure of the LLM answer:
+    #   - ``auto``    — model matches length to question complexity
+    #   - ``concise`` — 2-4 sentences, citations only
+    #   - ``detailed`` — multi-paragraph / numbered, every claim cited
+    # Default ``auto`` after rag-day-24 follow-up: 'concise' under-served
+    # fundamental questions like "what is jhāna" — auto delegates to the
+    # model. Per-request override available via ``AnswerRequest.style``.
+    answer_default_style: Literal["auto", "concise", "detailed"] = Field(default="auto")
+
+    # --- Pāli glossary expansion (rag-day-23) ---
+    # ``True``: rewrite the user query before encode by appending the
+    # canonical Pāli lemma + its top-1 EN/RU meaning from DPD. Closes
+    # the gap on bare-Pāli ("jhāna") and Russian transliteration
+    # ("джхана") queries against an English-mostly corpus.
+    #
+    # Default flipped to ``True`` after rag-day-23 tuning eval
+    # (``docs/EVAL_PALI_TUNING.md``):
+    #   * targeted golden (50 ru / 30 pli / 20 mixed): ref_hit@5
+    #     0.200 → 0.290 (+9 pp), MRR 0.150 → 0.162.
+    #   * broader v0.0-extended (91 en / 7 ru / 2 pli): parity
+    #     (diacritic-guard correctly skips English queries).
+    # Net: strictly-or-better outcome on both eval sets.
+    glossary_expand_pali_default: bool = Field(default=True)
+
+    # --- Definitional query expansion + foundational boost (rag-day-28) ---
+    # Both close recommendations 1+2 from docs/QA040_INVESTIGATION.md.
+    # Definitional expansion: detect "what is X?" / "что такое X?" and
+    # rewrite into a longer gloss-shaped template before encode.
+    # Foundational boost: post-RRF score multiplier for canonical works
+    # of curated terms (data/glossary/foundational.yaml).
+    # Both default ``True`` — they only fire when patterns/terms match,
+    # so the no-op cost on non-definitional queries is microsecond-level
+    # regex scans + a single dict lookup.
+    glossary_expand_definitional_default: bool = Field(default=True)
+    glossary_foundational_boost_default: bool = Field(default=True)
+    # Default boost factor applied when a curated entry omits its own
+    # ``boost`` field. Tunable for sensitivity sweeps on golden set.
+    glossary_foundational_boost_factor: float = Field(default=1.5, gt=1.0, le=5.0)
+
+    # --- RAG backend selection (app-day-02) ---
+    # ``stub`` returns hardcoded fixture sources in ~1 ms and needs no
+    # GPU / Qdrant / Postgres — ideal for frontend dev and CI smoke
+    # tests. ``real`` boots BGE-M3, Qdrant, the DB pool, and the
+    # reranker — production / GPU machines. Default is ``stub`` so a
+    # fresh clone can run ``pnpm dev`` without infrastructure;
+    # production deployments override via env.
+    rag_backend: Literal["stub", "real"] = Field(default="stub")
 
     # --- Embedding & evaluation APIs ---
     voyage_api_key: str = Field(default="")
