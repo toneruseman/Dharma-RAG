@@ -44,6 +44,7 @@
 | [21 — Confidence indicator](21-confidence-indicator.md) | app-day-24 | ✅ |
 | [22 — SSE streaming](22-sse-streaming.md) | app-day-25 | ✅ |
 | [23 — Feedback widget 👍/👎](23-feedback-widget.md) | app-day-26 | ✅ |
+| [24 — Pull-quote side panel](24-pull-quote-side-panel.md) | app-day-27 | ✅ |
 
 ## Что появится позже
 

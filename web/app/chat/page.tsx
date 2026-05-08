@@ -6,14 +6,16 @@ import { AnswerView } from "@/components/chat/AnswerView";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConfidenceBadge } from "@/components/chat/ConfidenceBadge";
 import { FeedbackWidget } from "@/components/chat/FeedbackWidget";
-import { SourcesPanel } from "@/components/chat/SourcesPanel";
+import { PullQuotePanel } from "@/components/chat/PullQuotePanel";
 import type { AnswerResponse, AnswerSnapshot, Source } from "@/lib/api-client";
 import { computeConfidence } from "@/lib/confidence";
 import { streamAsk, type DoneEvent } from "@/lib/sse";
 
+const HIGHLIGHT_DURATION_MS = 1500;
+
 /**
  * Build a synthetic `AnswerResponse` shape from the streaming events
- * so we can reuse `<AnswerView>` and `<SourcesPanel>` unchanged.
+ * so we can reuse `<AnswerView>` and `<PullQuotePanel>` unchanged.
  *
  * During streaming `latency_ms` / `retrieval_latency_ms` /
  * `llm_latency_ms` come from `RetrievalDoneEvent` for retrieval and
@@ -92,13 +94,53 @@ export default function ChatPage() {
   // when the user starts a new query while one is still streaming.
   const controllerRef = useRef<AbortController | null>(null);
 
+  // Two-way anchoring state for the citation ↔ pull-quote pairing.
+  // `highlightedQuoteId` is set when the user hovers a citation in the
+  // answer body; `highlightedCitationId` is set when the user clicks
+  // a pull-quote card. Each clears itself after HIGHLIGHT_DURATION_MS.
+  const [highlightedQuoteId, setHighlightedQuoteId] = useState<string | null>(null);
+  const [highlightedCitationId, setHighlightedCitationId] = useState<string | null>(null);
+  const quoteHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const citationHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Cleanup on unmount — drop the in-flight stream so it doesn't try
   // to setState after the component is gone.
   useEffect(() => {
     return () => {
       controllerRef.current?.abort();
+      if (quoteHighlightTimer.current) clearTimeout(quoteHighlightTimer.current);
+      if (citationHighlightTimer.current) clearTimeout(citationHighlightTimer.current);
     };
   }, []);
+
+  function handleCitationActivate(workId: string) {
+    const target = document.getElementById(`quote-${workId}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    setHighlightedQuoteId(workId);
+    if (quoteHighlightTimer.current) clearTimeout(quoteHighlightTimer.current);
+    quoteHighlightTimer.current = setTimeout(
+      () => setHighlightedQuoteId(null),
+      HIGHLIGHT_DURATION_MS,
+    );
+  }
+
+  function handleQuoteClick(workId: string) {
+    // Always jump to occurrence 0 — the first appearance — even if
+    // there are duplicates. The remaining ones are typically a few
+    // sentences away and within the same scroll viewport.
+    const target = document.getElementById(`cite-${workId}-0`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    setHighlightedCitationId(workId);
+    if (citationHighlightTimer.current) clearTimeout(citationHighlightTimer.current);
+    citationHighlightTimer.current = setTimeout(
+      () => setHighlightedCitationId(null),
+      HIGHLIGHT_DURATION_MS,
+    );
+  }
 
   const confidence = useMemo(
     () => (response ? computeConfidence(response.answer, response.sources) : null),
@@ -245,7 +287,11 @@ export default function ChatPage() {
               ) : null}
             </div>
             {confidence && !isStreaming ? <ConfidenceBadge verdict={confidence} /> : null}
-            <AnswerView response={response} />
+            <AnswerView
+              response={response}
+              highlightedCitationId={highlightedCitationId}
+              onCitationActivate={handleCitationActivate}
+            />
             {!isStreaming && response.metadata?.trace_id && response.answer.trim().length > 0 ? (
               <FeedbackWidget
                 key={response.metadata.trace_id}
@@ -254,7 +300,13 @@ export default function ChatPage() {
               />
             ) : null}
           </div>
-          <SourcesPanel sources={response.sources} />
+          <PullQuotePanel
+            answer={response.answer}
+            sources={response.sources}
+            citations={response.citations}
+            highlightedQuoteId={highlightedQuoteId}
+            onQuoteClick={handleQuoteClick}
+          />
         </section>
       ) : null}
     </main>

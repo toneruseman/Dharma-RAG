@@ -6,9 +6,17 @@ import { parseAnswerCitations } from "@/lib/citations";
 
 type AnswerViewProps = {
   response: AnswerResponse;
+  /** Highlighted by transient pulse — `null` when nothing is highlighted. */
+  highlightedCitationId?: string | null;
+  /** Fires when the user hovers / focuses a citation badge for `workId`. */
+  onCitationActivate?: (workId: string) => void;
 };
 
-export function AnswerView({ response }: AnswerViewProps) {
+export function AnswerView({
+  response,
+  highlightedCitationId,
+  onCitationActivate,
+}: AnswerViewProps) {
   // Multiple sources can share a work_canonical_id (different segments
   // matched). For hover-preview we pick the highest-scoring one — same
   // source the user would land on if they clicked through.
@@ -35,6 +43,12 @@ export function AnswerView({ response }: AnswerViewProps) {
   const knownIds = new Set(sourceByWorkId.keys());
   const segments = parseAnswerCitations(response.answer, knownIds);
 
+  // Track how many times each work_id has been rendered so far so we
+  // can mint unique anchor ids (`cite-mn10-0`, `cite-mn10-1`). The
+  // pull-quote panel always scrolls to occurrence index 0 — the first
+  // appearance — but every badge needs a unique DOM id.
+  const occurrenceCount = new Map<string, number>();
+
   return (
     <article className="dharma-text text-base leading-[1.85]">
       {segments.map((segment, i) => {
@@ -54,12 +68,24 @@ export function AnswerView({ response }: AnswerViewProps) {
         }
         return (
           <span key={i} className="inline-flex flex-wrap items-baseline gap-1">
-            {segment.ids.map((id, idx) => (
-              <Fragment key={id}>
-                {idx > 0 ? <span className="text-muted-foreground">,</span> : null}
-                <CitationBadge workId={id} source={sourceByWorkId.get(id)} />
-              </Fragment>
-            ))}
+            {segment.ids.map((id, idx) => {
+              const occ = occurrenceCount.get(id) ?? 0;
+              occurrenceCount.set(id, occ + 1);
+              return (
+                <Fragment key={id}>
+                  {idx > 0 ? <span className="text-muted-foreground">,</span> : null}
+                  <CitationBadge
+                    workId={id}
+                    source={sourceByWorkId.get(id)}
+                    anchorId={`cite-${id}-${occ}`}
+                    highlighted={highlightedCitationId === id}
+                    onActivate={
+                      onCitationActivate ? () => onCitationActivate(id) : undefined
+                    }
+                  />
+                </Fragment>
+              );
+            })}
           </span>
         );
       })}

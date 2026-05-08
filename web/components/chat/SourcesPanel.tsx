@@ -6,6 +6,11 @@ type SourcesPanelProps = {
   sources: Source[];
 };
 
+/**
+ * Replaced in `/chat` by `<PullQuotePanel>` (app-day-27, see concept 24).
+ * Kept in the repo for future admin/debug pages where the full retrieved
+ * pool — not just cited sources — is the relevant view.
+ */
 export function SourcesPanel({ sources }: SourcesPanelProps) {
   if (sources.length === 0) {
     return null;
