@@ -45,6 +45,7 @@
 | [22 — SSE streaming](22-sse-streaming.md) | app-day-25 | ✅ |
 | [23 — Feedback widget 👍/👎](23-feedback-widget.md) | app-day-26 | ✅ |
 | [24 — Pull-quote side panel](24-pull-quote-side-panel.md) | app-day-27 | ✅ |
+| [25 — BYOK UI](25-byok-ui.md) | app-day-28 | ⏸ deferred (см. ниже) |
 
 ## Что появится позже
 
@@ -54,6 +55,13 @@
 | 22 — Search UI с фильтрами | app-day-31+ |
 | 23 — Citation verification | rag-day-30+ |
 | 24 — Production deployment | app-day-53+ |
+
+> **Концепт 25 (BYOK UI) — deferred.** Решение 2026-05-02: BYOK-модель
+> убивает onboarding для не-tech аудитории; в prod пока крутится единый
+> OPENROUTER_API_KEY владельца. Возвращаемся к концепту когда появится
+> public-launch с грантом / sponsorship'ом / donor-моделью —
+> rate-limit + budget-cap layer станет критичным, BYOK будет
+> опциональным upgrade для power-users.
 
 ## Сводный layer над концептами
 
