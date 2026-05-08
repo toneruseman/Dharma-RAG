@@ -5,17 +5,17 @@
 ## Headline
 
 - **A** (pre-rag-day-28 baseline, glossary only): `ref_hit@5 = 0.490`, MRR = 0.341
-- **B** (rag-day-28+29+30 full stack): `ref_hit@5 = 0.560`, MRR = 0.453
-- **Δ ref_hit@5**: `+0.070` (+7.0 pp)
+- **B** (rag-day-28+29+30 full stack): `ref_hit@5 = 0.590`, MRR = 0.483
+- **Δ ref_hit@5**: `+0.100` (+10.0 pp)
 
 ### Decision
 
-**RELEASE** — `B.ref_hit@5 = 0.560` ≥ 0.5 threshold. Cut `v0.2.0`.
+**RELEASE** — `B.ref_hit@5 = 0.590` ≥ 0.5 threshold. Cut `v0.2.0`.
 
 ## Run metadata
 
-- **Generated**: 2026-05-08T16:20:56+00:00
-- **Git commit**: `20eb9f7`
+- **Generated**: 2026-05-08T17:17:08+00:00
+- **Git commit**: `cd6d987`
 - **Golden set**: `docs\eval\golden_v0.0_extended.yaml` (version `0.0-synthetic-extended`, n=100)
 - **top_k (eval)**: 20
 - **Collection**: `dharma_v2` (Contextual Retrieval, rag-day-16)
@@ -33,17 +33,17 @@
 
 | metric | A baseline | B stack | Δ | Δ pp |
 |---|---:|---:|---:|---:|
-| ref_hit@1 | 0.230 | 0.360 | +0.130 | +13.0 |
-| ref_hit@5 | 0.490 | 0.560 | +0.070 | +7.0 |
-| ref_hit@10 | 0.590 | 0.680 | +0.090 | +9.0 |
-| ref_hit@20 | 0.690 | 0.750 | +0.060 | +6.0 |
-| MRR | 0.341 | 0.453 | +0.111 | +11.1 |
+| ref_hit@1 | 0.230 | 0.390 | +0.160 | +16.0 |
+| ref_hit@5 | 0.490 | 0.590 | +0.100 | +10.0 |
+| ref_hit@10 | 0.590 | 0.710 | +0.120 | +12.0 |
+| ref_hit@20 | 0.690 | 0.780 | +0.090 | +9.0 |
+| MRR | 0.341 | 0.483 | +0.141 | +14.1 |
 
 ## Breakdown by language
 
 | language | n | A ref_hit@5 | B ref_hit@5 | Δ | A MRR | B MRR |
 |---|---:|---:|---:|---:|---:|---:|
-| en | 91 | 0.516 | 0.560 | +0.044 | 0.356 | 0.439 |
+| en | 91 | 0.516 | 0.593 | +0.077 | 0.356 | 0.472 |
 | pli | 2 | 0.000 | 1.000 | +1.000 | 0.000 | 1.000 |
 | ru | 7 | 0.286 | 0.429 | +0.143 | 0.253 | 0.470 |
 
@@ -51,13 +51,13 @@
 
 | difficulty | n | A ref_hit@5 | B ref_hit@5 | Δ |
 |---|---:|---:|---:|---:|
-| easy | 30 | 0.600 | 0.700 | +0.100 |
-| hard | 35 | 0.343 | 0.429 | +0.086 |
+| easy | 30 | 0.600 | 0.767 | +0.167 |
+| hard | 35 | 0.343 | 0.457 | +0.114 |
 | medium | 35 | 0.543 | 0.571 | +0.029 |
 
 ## Fixed / regressed at top-5
 
-- Fixed by stack: **9**
+- Fixed by stack: **12**
 - Regressed: **2**
 
 ### Fixed (B found, A missed)
@@ -66,10 +66,13 @@
 |---|---|---|---|---|
 | qa_003 | What is the Mahāsatipaṭṭhāna Sutta about? | dn22 | dn16, mn138, dn20, ud7.8, mn131 | dn22, mn10, dn22, mn10, dn22 |
 | qa_033 | What is metta meditation? | snp1.8, sn46.54 | an8.1, an11.16, an11.15, sn42.13, mn97 | snp1.8, an8.1, kp9, mn119, an8.63 |
+| qa_037 | What is the Fire Sermon? | sn35.28 | iti93, an7.46, sn1.41, an7.72, an7.72 | sn35.28, sn1.42, sn1.41, an7.46, sn1.72 |
 | qa_042 | What is the gradual training? | mn39, dn2 | mn65, mn70, mn107, an3.86, an8.20 | mn65, mn39, mn107, mn94, sn12.93-213 |
+| qa_048 | What is the simile of the chariot? | sn5.10 | mn24, mn24, mn27, sn35.238, mn22 | sn5.10, mn24, mn24, mn22, mn27 |
 | qa_049 | Что такое самадхи? | an4.41, sn40.10 | an3.101, dn10, dn10, an11.11, dn10 | an4.41, an10.6, an5.27, dn10, mn7 |
 | qa_050 | What is anatta? | sn22.59, mn22 | sn22.145, sn18.1, sn35.219-221, sn35.210-212, sn23.17 | sn22.59, sn22.145, snp1.8, sn22.16, sn22.77 |
 | qa_067 | What is dukkha-nirodha? | sn56.11, sn22.59, an3.61 | snp3.12, sn35.226, mn9, mn63, sn56.20 | sn56.11, sn56.11, mn9, snp3.12, an4.102 |
+| qa_093 | What is the difference between samatha-yānika and vipassanā-yānika practitioners | an4.94, sn12.70 | an5.31, sn54.12, mn73, an6.46, mn77 | sn12.70, sn12.70, sn12.70, sn12.70, sn12.70 |
 | qa_096 | dukkha samudaya nirodha magga | sn56.11, sn56.13 | sn56.32, sn38.1, sn4.6, mn31, dn16 | sn56.11, sn56.11, sn56.32, mn9, sn22.104 |
 | qa_099 | What is the role of the Sangha as refuge? | dn16, sn55.1, sn11.3 | sn40.10, kp1, sn40.10, sn47.9, mn72 | kp1, mn135, mn100, sn11.3, mn150 |
 | qa_100 | paṭiccasamuppāda anuloma paṭiloma | sn12.1, sn12.2 | dn15, sn35.113, mn60, ud1.2, mn60 | sn12.2, dn15, sn35.113, mn38, mn38 |

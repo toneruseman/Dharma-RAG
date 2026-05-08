@@ -222,9 +222,10 @@ class TestLoadFoundationalMatcher:
     def test_real_yaml_loads(self) -> None:
         # Sanity: shipped foundational.yaml parses and has at least
         # 12 Sahaya essentials + 6 supplementary + 5 rag-day-30
-        # Russian-foundational + 1 rag-day-32 right-effort split-out.
+        # Russian-foundational + 1 rag-day-32 right-effort split-out
+        # + 3 rag-day-35 English-title (fire sermon / chariot / samatha-yanika).
         matcher = load_foundational_matcher()
-        assert len(matcher.entries) >= 24
+        assert len(matcher.entries) >= 27
 
     def test_real_yaml_has_satipatthana(self) -> None:
         matcher = load_foundational_matcher()

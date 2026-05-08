@@ -309,3 +309,66 @@
     - bases of psychic power
   works: [sn51.13]
   boost: 1.3
+
+# === rag-day-35 (post-RU SC failure analysis): English-title entries ===
+# Title-based queries that lacked retrieval-bridge to canonical works.
+# Sujato translates titles; we map common English/popular names to the
+# right canonical_id.
+
+# Famous Fire Sermon — Sujato's title is "All Burning"; 'burning' alone
+# strongly surfaces sn35.28 in BM25 (rank=1.9 vs second 0.6).
+- term: fire sermon
+  aliases:
+    - all burning
+    - all is burning
+    - ādittapariyāya
+    - ādittapariyāyena
+    - aditta pariyaya
+    - sermon at gaya
+    - проповедь огня
+    - всё пылает
+  works: [sn35.28]
+  boost: 1.5
+
+# Vajirā Therī's chariot simile (Mara dialogue, anatta proof). Distinct
+# from MN 24 (Chariots at the Ready / relay-chariot training simile).
+# Sujato's title is "With Vajirā". The `simile of the chariot` alias
+# is intentional — when people ask about *the* chariot simile in a
+# definitional/topical sense, they mean Vajirā's anatta proof
+# ("a chariot is reckoned by its parts assembled"), not MN 24's
+# relay-chariot training metaphor.
+- term: simile of the chariot
+  aliases:
+    - chariot simile
+    - vajirā
+    - vajira
+    - ваджира
+    - with vajira
+    - nun vajira
+    - монахиня ваджира
+    - сравнение с колесницей
+  works: [sn5.10]
+  boost: 1.4
+
+# samatha-yānika vs vipassanā-yānika (calm-bound vs insight-bound
+# practitioners). Different from broad `vipassana → mn10/dn22` entry —
+# this catches the *comparison*. Sujato bridges: samatha → "internal
+# serenity of heart", vipassanā → "higher wisdom of discernment of
+# principles". Susīma is the nominal interlocutor in sn12.70.
+- term: samatha-yanika
+  aliases:
+    - samatha-yānika
+    - vipassanā-yānika
+    - vipassana-yanika
+    - саматха-яника
+    - випассана-яника
+    - susīma
+    - susima
+    - суси́ма
+    - internal serenity of heart
+    - higher wisdom of discernment
+    - calm and insight
+    - serenity and insight
+    - tranquility and insight
+  works: [an4.94, sn12.70]
+  boost: 1.3

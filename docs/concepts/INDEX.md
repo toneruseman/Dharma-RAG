@@ -54,6 +54,7 @@
 | [32 — Cumulative re-eval (28+29+30)](32-cumulative-eval.md) | rag-day-32 | ✅ |
 | [33 — Khuddaka Nikāya ingest](33-khuddaka-ingest.md) | rag-day-33 | ✅ |
 | [34 — Russian SC translations ingest](34-russian-sc-ingest.md) | rag-day-34 | ✅ |
+| [35 — Failure-driven curation + Context A/B](35-failure-driven-curation.md) | rag-day-35 | ✅ |
 
 ## Что появится позже
 

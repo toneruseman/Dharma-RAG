@@ -47,6 +47,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine  # no
 from src.config import get_settings  # noqa: E402
 from src.embeddings.bge_m3 import BGEM3Encoder  # noqa: E402
 from src.eval import PerQueryResult, load_golden_set, run_eval  # noqa: E402
+from src.expand import load_foundational_matcher  # noqa: E402
+from src.processing.glossary import load_glossary  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +129,24 @@ async def _amain(args: argparse.Namespace) -> int:
     engine = create_async_engine(settings.database_url, future=True, echo=False)
     session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
+    glossary = None
+    foundational = None
+    if args.full_stack:
+        try:
+            glossary = load_glossary()
+        except FileNotFoundError:
+            print("WARN: Pāli glossary not found")
+        try:
+            foundational = load_foundational_matcher(
+                default_boost=settings.glossary_foundational_boost_factor,
+            )
+            print(f"Loaded foundational matcher: {len(foundational.entries)} entries")
+        except FileNotFoundError:
+            print("WARN: foundational.yaml not found")
+        print("Mode: FULL STACK (glossary + definitional + foundational + bm25 bridge)")
+    else:
+        print("Mode: BASELINE (no expansion knobs — rag-day-26 config)")
+
     print(f"Encoder ready (device={encoder.device}, fp16={encoder.uses_fp16}). Running…")
 
     try:
@@ -141,6 +161,10 @@ async def _amain(args: argparse.Namespace) -> int:
                 top_k=args.top_k,
                 collection_name=PROD_COLLECTION,
                 expand_parents=True,
+                glossary=glossary,
+                glossary_max_meanings=1,
+                foundational_matcher=foundational,
+                expand_definitional=args.full_stack,
             )
     finally:
         qdrant.close()
@@ -194,6 +218,16 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=DEFAULT_TOP_K,
         help=f"Retrieval depth for ref_rank measurement (default: {DEFAULT_TOP_K})",
+    )
+    parser.add_argument(
+        "--full-stack",
+        action="store_true",
+        help=(
+            "Run with full post-rag-day-34 stack: Pāli glossary + "
+            "definitional expansion + foundational boost + BM25 bridge. "
+            "Default is rag-day-26 baseline (no expansion) for historical "
+            "comparison."
+        ),
     )
     return parser.parse_args()
 
