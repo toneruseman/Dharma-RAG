@@ -11,41 +11,27 @@ Manual review checklist (per chunk):
 
 ---
 
-## #1 — `an5.130` (eng, sujato)
+## #1 — `iti43` (eng, sujato)
 
-**Child text** _(first 200 chars):_ Numbered Discourses 5.130 13. Sick Loss “Mendicants, there are these five losses. What five? Loss of relatives, wealth, health, ethics, and view. It is not because of loss of relatives, wealth, or hea…
+**Child text** _(first 200 chars):_ So It Was Said 43 The Book of the Twos Chapter Two Free of Rebirth This was said by the Buddha, the Perfected One: that is what I heard. “There is, mendicants, freedom from rebirth, freedom from what …
 
 ### A: `anthropic/claude-3.5-haiku`
 
-> AN 5.130 (Numbered Discourses), a short discourse on the consequences of spiritual and material losses and gains. The sutta explores how ethical conduct and right view, rather than worldly possessions, determine one's rebirth destination. The Buddha systematically outlines five categories of loss and corresponding endowments, emphasizing the primacy of moral and philosophical qualities in determining karmic outcomes.
+> AN 2.43 (Book of the Twos) discusses the possibility of liberation from the cycle of rebirth. This passage appears in the chapter on "Free of Rebirth" and presents the Buddha's direct teaching about the existence of an escape from conditioned existence. The text explores the fundamental Buddhist concept of transcending saṃsāra through understanding the nature of rebirth and conditioned phenomena.
 
 ### B: `deepseek/deepseek-v4-flash`
 
-> AN 5.130, from the Book of the Fives, chapter on Sick Loss. This is the full sutta text. It lists five losses (byāpatti) and five endowments (sampadā): relatives, wealth, health, ethics (sīla), and view (diṭṭhi). The Buddha explains that only loss of ethics or view leads to rebirth in a bad place, and only endowment with ethics or view leads to a heavenly realm.
+> Iti 43, from the Itivuttaka (Book of the Twos, Chapter Two). This is a short discourse on the unconditioned escape from rebirth. The Buddha states that there exists a freedom from the produced, made, and conditioned (saṅkhata), and that without this freedom, no escape from conditioned existence would be possible. The verse contrasts the conditioned realm (jāta, bhūta, saṅkhata) with the peaceful, deathless, unconditioned state (nibbāna). Key Pāli terms: ajāta (unborn), asaṅkhata (unconditioned).
 
 ---
 
-## #2 — `sn35.133` (eng, sujato)
+## #2 — `an2.11-20` (eng, sujato)
 
-**Child text** _(first 200 chars):_ Linked Discourses 35.133 13. Householders Verahaccāni At one time Venerable Udāyī was staying near Kāmaṇḍā in the brahmin Todeyya’s mango grove. Then a boy who was a pupil of the brahmin lady of the V…
-
-### A: `anthropic/claude-3.5-haiku`
-
-> SN 35.133 (Linked Discourses, Sense Bases chapter). Opening narrative section describing an encounter between Venerable Udāyī and a brahmin lady of the Verahaccāni clan. The sutta explores the conditions for teaching the Dhamma, focusing on proper etiquette and respect when receiving spiritual instruction. The passage depicts a preliminary interaction where a young student praises Udāyī's teaching and arranges a meal invitation, highlighting the social dynamics of Buddhist monastic-lay interactions in ancient India.
-
-### B: `deepseek/deepseek-v4-flash`
-
-> SN 35.133 (Verahaccāni Sutta) opening: Venerable Udāyī stays near Kāmaṇḍā. A pupil of the brahmin lady of the Verahaccāni clan hears a Dhamma talk from Udāyī and praises it to his tutor. She invites Udāyī for a meal, but when she asks him to preach while wearing slippers, sitting on a high seat, and covering her head, Udāyī declines and leaves. This sets up the second invitation where she shows proper respect.
-
----
-
-## #3 — `sn20.1` (rus, sv)
-
-**Child text** _(first 200 chars):_ Саньютта Никая 20.1 1. Метафоры Остроконечная крыша Так я слышал. Однажды Благословенный проживал в Саваттхи, в роще Джеты, в парке Анатхапиндики. Там Благословенный сказал так: «Монахи, подобно тому,…
+**Child text** _(first 200 chars):_ “Firstly, brahmin, someone has done bad things and not done good things by way of body, speech, and mind. So what they’ve done and what they’ve not done is why some sentient beings, when their body br…
 
 ### A: `anthropic/claude-3.5-haiku`
 
-> SN 20.1, located in the opening section of a sutta about metaphors, discusses the fundamental Buddhist psychological principle of ignorance (avijjā) as the root of unwholesome mental qualities. The passage uses an architectural metaphor comparing mental defilements to roof rafters that converge at and depend upon ignorance, which when removed, eliminates all associated negative mental states. The Buddha delivers this teaching in Jetavana monastery in Sāvatthī, instructing monks to cultivate diligence as a means of addressing ignorance.
+> AN 4.41, a discourse discussing karmic consequences and ethical conduct. The passage occurs in a dialogue between the Buddha and Ānanda, exploring the immediate and long-term effects of skillful and unskillful actions (kamma) performed through body, speech, and mind. The context emphasizes personal moral responsibility and the psychological and rebirth consequences of one's actions.
 
 ### B: `deepseek/deepseek-v4-flash`
 
@@ -53,35 +39,35 @@ Manual review checklist (per chunk):
 
 ---
 
-## #4 — `an4.112` (eng, sujato)
+## #3 — `sn12.18` (eng, sujato)
 
-**Child text** _(first 200 chars):_ Numbered Discourses 4.112 12. With Kesi Speed “Mendicants, a fine royal thoroughbred with four factors is worthy of a king, fit to serve a king, and reckoned a factor of kingship. What four? Integrity…
-
-### A: `anthropic/claude-3.5-haiku`
-
-> AN 4.112 (Numbered Discourses), a teaching about spiritual qualities using an analogy with royal horses. The Buddha compares the ideal qualities of a royal thoroughbred to the qualities of an accomplished mendicant. The sutta explores how certain character traits make someone worthy of respect and veneration, drawing a parallel between excellence in worldly and spiritual domains. Key terms include "field of merit" (puññakkhetta) and the four qualities of integrity, speed, patience, and gentleness.
-
-### B: `deepseek/deepseek-v4-flash`
-
-> <ERROR: Unexpected message content shape: NoneType>
-
----
-
-## #5 — `sn42.9` (eng, sujato)
-
-**Child text** _(first 200 chars):_ “Indeed I do, chief.” “So what then are you doing, wandering together with this large Saṅgha of mendicants during a time of famine and scarcity, with crops blighted and turned to straw? The Buddha is …
+**Child text** _(first 200 chars):_ ‘Ignorance is a requirement for choices. Choices are a requirement for consciousness. … That is how this entire mass of suffering originates. When ignorance fades away and ceases with no residue left …
 
 ### A: `anthropic/claude-3.5-haiku`
 
-> SN 42.9 (Linked Discourses with Chiefs' Families). Context of a dialogue between the Buddha and a chief during a regional famine, where the chief challenges the Buddha's presence with his monastic community during a time of scarcity. The Jain ascetic Ñātika has prompted the chief to question whether the Buddha's teachings truly support family welfare. The Buddha responds by explaining how generosity, ethical conduct, and understanding impermanence actually support family prosperity, not destroy it. The passage explores the relationship between monastic practice and lay economic survival, with key Pāli terms like "dāna" (giving) and "sīla" (restraint) implicitly underlying the discussion.
+> SN 12.18 is a discourse between the Buddha and the wanderer Timbaruka at Sāvatthī, exploring the origins of pleasure and pain. In this concluding section, the Buddha explains the causal chain of suffering (paṭiccasamuppāda) by demonstrating how ignorance (avijjā) conditions volitional formations (saṅkhāra), ultimately leading to the cessation of suffering through the systematic elimination of each conditioned link. The passage culminates in Timbaruka's conversion and taking refuge in the Triple Gem.
 
 ### B: `deepseek/deepseek-v4-flash`
 
-> SN 42.9 (Asibandhakaputta Sutta). The Buddha is staying at Nāḷandā during a famine. A Jain disciple, Asibandhaka's son, challenges him, accusing him of ruining families by wandering with a large Saṅgha. The Buddha replies that he recalls no family ruined by giving alms; wealth comes from giving, truth, and restraint. He then lists eight causes for family ruin: rulers, bandits, fire, flood, lost savings, business failure, a wastrel heir, and impermanence. The passage includes the key Pāli term "dāna" (giving).
+> SN 12.18 Timbaruka Sutta (Linked Discourses 12.18, with the wanderer Timbaruka). In the dialogue, the Buddha rejects four extreme views on the origin of pleasure and pain (self-made, other-made, both, or chance), then teaches the middle way of dependent origination (paṭiccasamuppāda). This chunk contains the Buddha's summary: ignorance conditions choices, choices condition consciousness, leading to the origin of suffering; cessation of ignorance leads to cessation of the entire mass of suffering. Timbaruka then expresses faith and takes refuge.
 
 ---
 
-## #6 — `sn3.25` (eng, sujato)
+## #4 — `dn31` (rus, khantibalo)
+
+**Child text** _(first 200 chars):_ Кто мудр и нравственен, мягок и сообразителен, скромен и не горделив — тот обретает славу. Кто энергичен и не ленив, непоколебим в беде, безупречен в манерах и мудр — тот обретает славу. Кто сплачивае…
+
+### A: `anthropic/claude-3.5-haiku`
+
+> DN 31 (Sigālovāda Sutta) concluding section, discussing ideal personal qualities and social relationships. The passage appears near the end of the Buddha's discourse to Sigāla, a young householder, about ethical conduct and interpersonal virtues. The text focuses on qualities that lead to personal reputation and social harmony, emphasizing moral and relational excellence.
+
+### B: `deepseek/deepseek-v4-flash`
+
+> DN 31 Sigālovāda Sutta (Siṅgālovāda Sutta). Near the conclusion, after the Buddha’s instructions on serving the six directions (including servants as nadir and ascetics as zenith). This passage describes the qualities that bring fame (wisdom, virtue, energy, etc.) and the four saṅgahavatthu (bases of social solidarity: generosity, kind speech, beneficial conduct, impartiality). It ends with Sigāla (Siṅgāla) taking refuge in the Buddha, Dhamma, and Saṅgha, becoming a lay follower.
+
+---
+
+## #5 — `sn3.25` (eng, sujato)
 
 **Child text** _(first 200 chars):_ Whoever lives by the teaching in body, speech, and mind, is praised in this life and departs to rejoice in heaven.” The Linked Discourses with the Kosalan are completed.…
 
@@ -91,17 +77,31 @@ Manual review checklist (per chunk):
 
 ### B: `deepseek/deepseek-v4-flash`
 
-> SN 3.25 (Sutta title uncertain, omit). This is the closing verse of the Simile of the Mountain sutta, where the Buddha concludes that one who lives by the teaching in body, speech, and mind is praised in this life and rejoices in heaven. The passage follows the Buddha's dialogue with King Pasenadi about the inevitability of old age and death advancing like crushing mountains.
+> SN 3.25 (Pabbatopama Sutta, Simile of the Mountain), closing verse. The Buddha concludes his teaching to King Pasenadi: living by the Dhamma in body, speech, and mind brings praise in this life and rebirth in heaven. The col
 
 ---
 
-## #7 — `cp12` (eng, sujato)
+## #6 — `sn23.5` (eng, sujato)
 
-**Child text** _(first 200 chars):_ The Conduct Leading to Buddhahood The Chapter on an Elephant The Perfection of Ethics (2nd) The Dragon Bhūridatta’s Conduct “Then again when I was Bhūridatta, a dragon of great psychic power, together…
+**Child text** _(first 200 chars):_ Linked Discourses 23.5 1. About Māra Ascetics and Brahmins At Sāvatthī. When Venerable Rādha was seated to one side, the Buddha said to him: “Rādha, there are these five grasping aggregates. What five…
 
 ### A: `anthropic/claude-3.5-haiku`
 
-> This passage appears to be from a Jātaka tale (birth story of the Buddha) describing a past life of the Bodhisatta as Bhūridatta, a dragon (nāga) with extraordinary ethical commitment. The narrative focuses on a dramatic episode demonstrating the Bodhisatta's unwavering dedication to moral principles, even in the face of extreme physical hardship and potential death. The text emphasizes the supreme importance of ethical conduct (sīla) as a fundamental perfection (pāramī) on the path to Buddhahood, illustrating the Bodhisatta's willingness to sacrifice personal comfort and safety to maintain his moral integrity.
+> SN 23.5 is a discourse from the Saṃyutta Nikāya's Māra chapter, set at Sāvatthī. The Buddha is speaking directly to the monk Rādha about the five upādānakkhandha (grasping aggregates). This passage explores the Buddha's criteria for genuine spiritual practitioners, emphasizing deep understanding of the nature of form, feeling, perception, choices, and consciousness. The key teaching contrasts superficial religious practitioners with those who have genuine insight into the gratification, drawback, and escape from the aggregates.
+
+### B: `deepseek/deepseek-v4-flash`
+
+> SN 23.5 (Rādha Saṃyutta, 1. Māravagga), opening. The Buddha tells Rādha that true ascetics and brahmins are those who understand the gratification, drawback, and escape of the five upādānakkhandha (grasping aggregates): rūpa, vedanā, saññā, saṅkhārā, viññāṇa.
+
+---
+
+## #7 — `an9.13` (eng, sujato)
+
+**Child text** _(first 200 chars):_ Numbered Discourses 9.13 2. The Lion’s Roar With Koṭṭhita Then Venerable Mahākoṭṭhita went up to Venerable Sāriputta, and exchanged greetings with him. When the greetings and polite conversation were …
+
+### A: `anthropic/claude-3.5-haiku`
+
+> AN 9.13 (Numbered Discourses), a dialogue between Venerable Mahākoṭṭhita and Venerable Sāriputta, explores the fundamental purpose of the Buddhist spiritual life. In this opening section, Mahākoṭṭhita systematically questions Sāriputta about various potential motivations for practicing the Buddha's teachings, each time receiving a categorical denial. The passage focuses on the relationship between actions (kamma), their experience, and the ultimate goal of the spiritual path.
 
 ### B: `deepseek/deepseek-v4-flash`
 
@@ -109,44 +109,44 @@ Manual review checklist (per chunk):
 
 ---
 
-## #8 — `ud3.10` (eng, sujato)
+## #8 — `an3.90` (eng, sujato)
 
-**Child text** _(first 200 chars):_ Heartfelt Sayings 3.10 The World So I have heard. At one time, when he was first awakened, the Buddha was staying in Uruvelā at the root of the tree of awakening on the bank of the Nerañjarā River. Th…
+**Child text** _(first 200 chars):_ Numbered Discourses 3.90 9. Ascetics Three Trainings (2nd) “Mendicants, these are the three trainings. What three? The training in the higher ethics, the higher mind, and the higher wisdom. And what i…
 
 ### A: `anthropic/claude-3.5-haiku`
 
-> Udāna 3.10 (Heartfelt Sayings). Immediately after the Buddha's awakening in Uruvelā, he reflects on the nature of suffering and existence. This passage occurs during his initial contemplation after attaining enlightenment, focusing on the fundamental characteristics of worldly experience, including the key themes of attachment, suffering, and the cycle of rebirth. Key Pāli concepts include dukkha, upādāna, and bhava.
+> AN 3.90 (Numbered Discourses), a discourse on the three higher trainings in Buddhist practice. Located in the opening section, this passage systematically defines the training in higher ethics (sīla), higher mind (samādhi), and higher wisdom (paññā). The text explains each training through practical descriptions of monastic discipline, meditative absorption, and insight into liberation.
 
 ### B: `deepseek/deepseek-v4-flash`
 
-> Ud 3.10 (Udāna 3.10, Loka Sutta). Opening narrative: the newly awakened Buddha sits for seven days at the root of the Bodhi tree, then surveys the world with the Buddha-eye, seeing beings tormented by greed, hate, and delusion. The Buddha then utters a heartfelt statement on the world's attachment to bhava (continued existence), the futility of seeking freedom through bhava or vibhava (nonexistence), and the cessation of suffering through the ending of upādāna (grasping). The chunk includes the narrative and the first part of the utterance.
+> AN 3.90, the second sutta on the three trainings (adhisīla, adhicitta, adhipaññā). This opening defines the training in higher ethics (restraint in the monastic code), higher
 
 ---
 
-## #9 — `sn11.12` (eng, sujato)
+## #9 — `an7.8` (eng, sujato)
 
-**Child text** _(first 200 chars):_ In a former life, when Sakka was a human being, he undertook seven vows. And it was because of undertaking these that he achieved the status of Sakka. A child who respects their parents, and honors th…
+**Child text** _(first 200 chars):_ Numbered Discourses 7.8 1. Wealth Fetters “Mendicants, there are these seven fetters. What seven? The fetters of attraction, aversion, views, doubt, conceit, desire for continued existence, and ignora…
 
 ### A: `anthropic/claude-3.5-haiku`
 
-> SN 11.12 (Sakka Saṃyutta, Chapter on Sakka's Names). Context for this passage: The Buddha is explaining the origins of Sakka's various epithets and divine status, focusing on the seven moral vows Sakka undertook as a human that led to his elevation to lord of the gods (Devānaminda). The passage reveals the Theravāda perspective on how ethical conduct can lead to spiritual advancement, emphasizing familial respect, right speech, generosity, and emotional control as key virtues. The key Pāli terms here include Sakka, Devānaminda, and the implicit concept of kamma (moral causation) through virtuous actions.
+> AN 7.8 (Numbered Discourses) discusses the seven fetters that bind beings to suffering. This passage is from the opening of the sutta, listing the key mental obstacles that prevent liberation: rāga (attraction), dosa (aversion), diṭṭhi (views), vicikicchā (doubt), māna (conceit), bhavataṇhā (desire for continued existence), and avijjā (ignorance). The text provides a concise taxonomy of mental states that keep beings trapped in the cycle of rebirth.
 
 ### B: `deepseek/deepseek-v4-flash`
 
-> SN 11.12 (Sakka Sutta), near Sāvatthī. The Buddha explains Sakka’s seven vows from his past human life, which led to his divine status. The chunk lists the vows: supporting parents, honoring elders, gentle speech, no backbiting, generosity, truthfulness, and mastering anger. Key Pāli terms: Sakka, satta vatāni (seven vows).
+> <ERROR: Unexpected message content shape: NoneType>
 
 ---
 
-## #10 — `an3.77` (rus, o)
+## #10 — `sn26.4` (eng, sujato)
 
-**Child text** _(first 200 chars):_ Восходящие Наставления 3.77 Раздел Ананда Сутта Бхава Вторая Тогда уважаемый Ананда подошёл к Благословенному… уважаемый Ананда Благословенного так спросил: “бхава, бхава”, почтенный, – так говорят. В…
+**Child text** _(first 200 chars):_ Linked Discourses 26.4 1. Arising Contact At Sāvatthī. “Mendicants, the arising of eye contact … mind contact … is the manifestation of old age and death. The cessation of eye contact … mind contact ……
 
 ### A: `anthropic/claude-3.5-haiku`
 
-> This appears to be a Russian translation of an Ascending Instructions (Uparipannāsa) text, specifically the Ānanda Sutta on bhava (becoming). The passage is a dialogue between the Buddha and Ānanda exploring the nature of bhava across different realms of experience. The context focuses on how karma, intention, and ignorance generate future becoming through metaphors of field, seed, and moisture. Key Pāli terms include "bhava" (becoming), "dhātu" (element/realm), and the causal process of generating new states of existence through mental formations.
+> SN 26.4 is a short discourse in the Saṃyutta Nikāya's section on contact (phassa), located in Sāvatthī. The passage explores the causal relationship between sensory contact and the manifestation of aging and death, highlighting a key principle of dependent origination (paṭiccasamuppāda) that links sensory experience to the cycle of suffering.
 
 ### B: `deepseek/deepseek-v4-flash`
 
-> AN 3.77 (Bhava Sutta, second). The Buddha explains to Ānanda how bhava (existence) is produced: kamma is the field, viññāṇa the seed, and taṇhā the moisture. For beings hindered by ignorance and fettered by craving, intention and determination establish consciousness in a lower, middle, or higher dhātu (kāma-, rūpa-, arūpa-dhātu), thus generating future bhava.
+> SN 26.4, Saṃyutta Nikāya 26.4, Arising Contact (Phassa Sutta). Opening at Sāvatthī. The Buddha states that the arising of eye contact (cakkhusamphassa) through mind contact (manosamphassa) is the manifestation of old age and death (jarāmaraṇa), and their cessation is the disappearance of old age and death.
 
 ---
