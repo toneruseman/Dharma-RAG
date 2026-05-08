@@ -90,15 +90,30 @@
   works: [mn118]
   boost: 1.5
 
+# `balanced effort` and `right effort` are *different* concepts:
+# balanced effort = sona sutta lute simile (AN 6.55, about
+# not-too-tight / not-too-slack); right effort (sammā-vāyāma) = the
+# 6th factor of the Noble Eightfold Path, taught in MN 117 / AN 4.13.
+# Earlier rag-day-28 entry overlapped them — fixed in rag-day-32.
 - term: balanced effort
   aliases:
-    - right effort
     - sona
     - sona sutta
     - средние усилия
-    - sammā-vāyāma
+    - lute simile
   works: [an6.55]
   boost: 1.5
+
+- term: right effort
+  aliases:
+    - sammā-vāyāma
+    - samma-vayama
+    - правильное усилие
+    - правильное старание
+    - four right efforts
+    - four right strivings
+  works: [mn117, an4.13]
+  boost: 1.4
 
 - term: metta
   aliases:
@@ -148,15 +163,16 @@
   works: [dn31]
   boost: 1.5
 
+# Earlier rag-day-28 entry over-fired on broad `impermanence` /
+# `anicca` aliases that send the BM25 channel after every
+# impermanence-themed sutta — pushing sn22.95 down on its own
+# definitional query. Trimmed to phena-specific aliases in rag-day-32.
 - term: foam similes
   aliases:
-    - impermanence
-    - anicca
-    - аничча
-    - непостоянство
     - phena
     - foam
     - simile of foam
+    - foam simile
   works: [sn22.95]
   boost: 1.4
 

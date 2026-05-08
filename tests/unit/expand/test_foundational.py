@@ -221,10 +221,10 @@ class TestApplyBoost:
 class TestLoadFoundationalMatcher:
     def test_real_yaml_loads(self) -> None:
         # Sanity: shipped foundational.yaml parses and has at least
-        # the 12 Sahaya essentials + 6 supplementary + 5 rag-day-30
-        # Russian-foundational entries.
+        # 12 Sahaya essentials + 6 supplementary + 5 rag-day-30
+        # Russian-foundational + 1 rag-day-32 right-effort split-out.
         matcher = load_foundational_matcher()
-        assert len(matcher.entries) >= 23
+        assert len(matcher.entries) >= 24
 
     def test_real_yaml_has_satipatthana(self) -> None:
         matcher = load_foundational_matcher()
