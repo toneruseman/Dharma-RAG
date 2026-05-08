@@ -51,6 +51,7 @@
 | [28 — Definitional expansion + foundational mapping](28-definitional-expansion.md) | rag-day-28 | ✅ |
 | [29 — BM25 translation bridge](29-bm25-translation-bridge.md) | rag-day-29 | ✅ |
 | [30 — Russian foundational expansion](30-russian-foundational-expansion.md) | rag-day-30 | ✅ |
+| [32 — Cumulative re-eval (28+29+30)](32-cumulative-eval.md) | rag-day-32 | ✅ |
 
 ## Что появится позже
 

@@ -35,6 +35,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.eval.golden import GoldenItem, GoldenSet
 from src.eval.metrics import mean_reciprocal_rank, reciprocal_rank, ref_hit_at_k
+from src.expand import FoundationalMatcher
+from src.expand import expand_definitional as _expand_definitional
 from src.processing.glossary import Glossary
 from src.retrieval.hybrid import (
     EncoderProtocol,
@@ -115,6 +117,8 @@ async def run_eval(
     expand_parents: bool | None = None,
     glossary: Glossary | None = None,
     glossary_max_meanings: int = 1,
+    foundational_matcher: FoundationalMatcher | None = None,
+    expand_definitional: bool = False,
 ) -> list[PerQueryResult]:
     """Run ``hybrid_search`` over every item in ``golden`` and collect results.
 
@@ -150,6 +154,23 @@ async def run_eval(
         long synonym chains; ``0`` adds only the canonical Pāli
         lemma without any EN/RU translation. Ignored when
         ``glossary`` is None.
+    foundational_matcher:
+        Day-32 ablation knob (rag-day-28+29+30 stack). When provided,
+        every query is matched against the curated foundational map
+        (``data/glossary/foundational.yaml``); on hit, the matcher's
+        ``apply_boost`` callable is passed to ``hybrid_search`` for
+        post-RRF score boost, and English aliases are appended to the
+        BM25 channel via ``or``-clauses. Mirrors the production code
+        path in :class:`src.rag.service.RAGService.query`.
+    expand_definitional:
+        Day-32 ablation knob (rag-day-28). When ``True``, every query
+        is rewritten through the definitional template before the
+        Pāli glossary expansion (``"What is X?"`` →
+        ``"What is X? Discourse on X. Foundations of X. ..."``). When
+        ``foundational_matcher`` is also set, the matcher's term
+        aliases are passed to ``expand_definitional`` so the gloss
+        also includes English descriptive phrases (mirrors
+        production). ``False`` (default) means no rewrite.
     """
     results: list[PerQueryResult] = []
     # Forward only the kwargs the caller cared to override — keeps the
@@ -159,15 +180,50 @@ async def run_eval(
         extra["collection_name"] = collection_name
     if expand_parents is not None:
         extra["expand_parents"] = expand_parents
+    # Pre-compute term_aliases once if both knobs active — avoids
+    # rebuilding the dict per query.
+    term_aliases: dict[str, list[str]] | None = None
+    if expand_definitional and foundational_matcher is not None:
+        term_aliases = {e.term: list(e.aliases) for e in foundational_matcher.entries}
     for idx, item in enumerate(golden.items, start=1):
         t0 = time.perf_counter()
-        query_text = (
-            glossary.expand_query(item.query, max_meanings=glossary_max_meanings)
-            if glossary is not None
-            else item.query
-        )
+        # Mirror RAGService.query() ordering: definitional → Pāli → encode.
+        encoded_query = item.query
+        if expand_definitional:
+            encoded_query = _expand_definitional(item.query, term_aliases=term_aliases)
+        if glossary is not None:
+            encoded_query = glossary.expand_query(encoded_query, max_meanings=glossary_max_meanings)
+        # BM25 sees raw query + foundational English aliases (rag-day-29
+        # bridge). Encoder sees expanded gloss.
+        bm25_query: str | None = None
+        boost_callable = None
+        if foundational_matcher is not None:
+            matcher: FoundationalMatcher = foundational_matcher
+            match = matcher.match(item.query)
+            if match.boost_by_work:
+                aliases = matcher.bm25_aliases(item.query)
+                if aliases:
+                    clauses = [item.query] + [f'"{a}"' if " " in a else a for a in aliases]
+                    bm25_query = " or ".join(clauses)
+
+                def _apply_boost(
+                    hits: list[HybridHit],
+                    _matcher: FoundationalMatcher = matcher,
+                    _q: str = item.query,
+                ) -> list[HybridHit]:
+                    return _matcher.apply_boost(hits, _q)
+
+                boost_callable = _apply_boost
+        if bm25_query is not None:
+            extra["bm25_query"] = bm25_query
+        elif "bm25_query" in extra:
+            extra.pop("bm25_query")
+        if boost_callable is not None:
+            extra["apply_post_fusion_boost"] = boost_callable
+        elif "apply_post_fusion_boost" in extra:
+            extra.pop("apply_post_fusion_boost")
         hits, timings = await hybrid_search(
-            query=query_text,
+            query=encoded_query,
             encoder=encoder,
             qdrant_client=qdrant_client,
             db_session=db_session,
