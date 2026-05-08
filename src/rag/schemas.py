@@ -67,6 +67,30 @@ class QueryRequest(BaseModel):
             "for debugging an unexpected hit set."
         ),
     )
+    expand_definitional: bool | None = Field(
+        default=None,
+        description=(
+            "Override definitional query expansion (rag-day-28). "
+            "``None`` (default) defers to the server-side setting "
+            "``glossary_expand_definitional_default``. ``True`` detects "
+            "'what is X?' / 'что такое X?' patterns and rewrites them "
+            "into a longer gloss template before encode (closes the "
+            "QA040 satipaṭṭhāna anomaly). ``False`` skips the rewrite "
+            "for A/B debugging."
+        ),
+    )
+    foundational_boost: bool | None = Field(
+        default=None,
+        description=(
+            "Override foundational mapping boost (rag-day-28). "
+            "``None`` (default) defers to "
+            "``glossary_foundational_boost_default``. ``True`` applies "
+            "a post-RRF score multiplier to canonical works of curated "
+            "terms (data/glossary/foundational.yaml — e.g. dukkha → "
+            "sn56.11). ``False`` disables the boost while keeping "
+            "definitional expansion if enabled."
+        ),
+    )
 
 
 class Source(BaseModel):
@@ -149,6 +173,24 @@ class PipelineMetadata(BaseModel):
             "disabled by setting/request or when no glossary terms "
             "matched the query — the metadata field tracks the "
             "*effective* expansion, not just the toggle."
+        ),
+    )
+    expand_definitional: bool = Field(
+        default=False,
+        description=(
+            "Whether the definitional template (rag-day-28) actually "
+            "rewrote the query. ``True`` only when the regexp matched "
+            "and a longer gloss was substituted — distinct from the "
+            "toggle being on but no pattern matching."
+        ),
+    )
+    foundational_boost: bool = Field(
+        default=False,
+        description=(
+            "Whether the foundational mapping (rag-day-28) actually "
+            "boosted at least one work for this query. ``True`` only "
+            "when a curated term/alias was found and its work appeared "
+            "in the candidate pool."
         ),
     )
     n_candidates: int = Field(

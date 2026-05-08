@@ -38,6 +38,7 @@ from src.config import Settings, get_settings
 from src.db.models.frbr import Chunk, Expression, Instance, Work
 from src.db.models.lookups import Author
 from src.embeddings.bge_m3 import BGEM3Encoder
+from src.expand import FoundationalMatcher, expand_definitional
 from src.processing.glossary import Glossary
 from src.rag.schemas import (
     PipelineMetadata,
@@ -83,14 +84,19 @@ def _build_version_string(
     rerank: bool,
     expand_parents: bool,
     expand_pali: bool,
+    expand_definitional: bool,
+    foundational_boost: bool,
 ) -> str:
     """Compose the pipeline version label embedded in PipelineMetadata.
 
     Compact format chosen so logs and Phoenix span attributes stay
-    grep-able. Example: ``dharma_v2-rerank0-parents1-pali1``.
+    grep-able. Example: ``dharma_v2-rerank0-parents1-pali1-defn1-fnd1``.
     """
     return (
-        f"{collection}-rerank{int(rerank)}-parents{int(expand_parents)}" f"-pali{int(expand_pali)}"
+        f"{collection}-rerank{int(rerank)}-parents{int(expand_parents)}"
+        f"-pali{int(expand_pali)}"
+        f"-defn{int(expand_definitional)}"
+        f"-fnd{int(foundational_boost)}"
     )
 
 
@@ -122,6 +128,7 @@ class RAGService:
         session_maker: async_sessionmaker[AsyncSession],
         settings: Settings | None = None,
         glossary: Glossary | None = None,
+        foundational_matcher: FoundationalMatcher | None = None,
     ) -> None:
         self._encoder = encoder
         self._qdrant = qdrant_client
@@ -129,6 +136,7 @@ class RAGService:
         self._session_maker = session_maker
         self._settings = settings or get_settings()
         self._glossary = glossary
+        self._foundational = foundational_matcher
 
     @asynccontextmanager
     async def _session(self) -> AsyncIterator[AsyncSession]:
@@ -143,25 +151,82 @@ class RAGService:
         rerank = settings.retrieval_rerank_default
         expand_parents = settings.retrieval_expand_parents_default
 
+        # Definitional expansion (rag-day-28). Runs *before* Pāli
+        # expansion: the regex anchors on the raw user query
+        # (``^What is X?$``), and Pāli expansion would append meanings
+        # that break the anchor. Order: definitional → Pāli → encode.
+        # See docs/concepts/28-definitional-expansion.md.
+        # When the foundational matcher is loaded we also pass term
+        # aliases — bridges bare-Pāli terms to English descriptive
+        # phrases that match canonical sutta chunk text (``satipaṭṭhāna``
+        # → "four foundations of mindfulness").
+        expand_definitional_requested = (
+            request.expand_definitional
+            if request.expand_definitional is not None
+            else settings.glossary_expand_definitional_default
+        )
+        expand_definitional_effective = False
+        encoded_query = request.query
+        if expand_definitional_requested:
+            term_aliases = (
+                {e.term: list(e.aliases) for e in self._foundational.entries}
+                if self._foundational is not None
+                else None
+            )
+            after_definitional = expand_definitional(request.query, term_aliases=term_aliases)
+            if after_definitional != request.query:
+                encoded_query = after_definitional
+                expand_definitional_effective = True
+
         # Effective Pāli expansion: request override wins, else server
         # default. Skipped if no glossary is loaded — graceful fallback
         # so a missing dpd_full.json doesn't break the endpoint.
+        # Operates on the (possibly definitional-expanded) text.
         expand_pali_requested = (
             request.expand_pali
             if request.expand_pali is not None
             else settings.glossary_expand_pali_default
         )
         expand_pali_effective = False
-        encoded_query = request.query
         if expand_pali_requested and self._glossary is not None:
-            expanded = self._glossary.expand_query(request.query)
-            if expanded != request.query:
+            expanded = self._glossary.expand_query(encoded_query)
+            if expanded != encoded_query:
                 encoded_query = expanded
                 expand_pali_effective = True
+
+        # BM25 receives the *un-expanded* query so Postgres FTS keeps
+        # precision on the raw term — we only sweeten the encoder-side
+        # input. Raw user query is the safest BM25 source.
+        bm25_query = request.query
+
+        # Foundational boost (rag-day-28). Captures matcher + raw user
+        # query in a closure handed to ``hybrid_search`` for post-RRF
+        # score multiplication on canonical works of curated terms.
+        # Match runs against the *original* user query to avoid
+        # accidental term inflation from the gloss template.
+        foundational_requested = (
+            request.foundational_boost
+            if request.foundational_boost is not None
+            else settings.glossary_foundational_boost_default
+        )
+        foundational_effective = False
+        boost_callable = None
+        if foundational_requested and self._foundational is not None:
+            match_result = self._foundational.match(request.query)
+            if match_result.boost_by_work:
+                foundational_effective = True
+                matcher_query = request.query
+
+                def _apply_boost(hits: list[HybridHit]) -> list[HybridHit]:
+                    assert self._foundational is not None  # narrowed above
+                    return self._foundational.apply_boost(hits, matcher_query)
+
+                boost_callable = _apply_boost
 
         async with self._session() as session:
             hits, _timings = await hybrid_search(
                 query=encoded_query,
+                bm25_query=bm25_query,
                 encoder=self._encoder,
                 qdrant_client=self._qdrant,
                 db_session=session,
@@ -170,6 +235,7 @@ class RAGService:
                 rerank=rerank,
                 collection_name=collection,
                 expand_parents=expand_parents,
+                apply_post_fusion_boost=boost_callable,
             )
 
         n_candidates = len(hits)
@@ -191,11 +257,15 @@ class RAGService:
                     rerank=rerank,
                     expand_parents=expand_parents,
                     expand_pali=expand_pali_effective,
+                    expand_definitional=expand_definitional_effective,
+                    foundational_boost=foundational_effective,
                 ),
                 collection=collection,
                 rerank=rerank,
                 expand_parents=expand_parents,
                 expand_pali=expand_pali_effective,
+                expand_definitional=expand_definitional_effective,
+                foundational_boost=foundational_effective,
                 n_candidates=n_candidates,
             ),
         )

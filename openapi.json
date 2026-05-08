@@ -61,6 +61,18 @@
       "AnswerRequest": {
         "description": "Body of POST /api/answer.",
         "properties": {
+          "expand_definitional": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Forwarded to retrieval. Override definitional query expansion (rag-day-28). ``None`` defers to server default.",
+            "title": "Expand Definitional"
+          },
           "expand_pali": {
             "anyOf": [
               {
@@ -87,6 +99,18 @@
             ],
             "description": "Forwarded to retrieval. Drops sources whose ``work_canonical_id`` appears in this list before they reach the LLM.",
             "title": "Forbidden Works"
+          },
+          "foundational_boost": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Forwarded to retrieval. Override foundational mapping boost (rag-day-28). ``None`` defers to server default.",
+            "title": "Foundational Boost"
           },
           "model": {
             "anyOf": [
@@ -378,6 +402,12 @@
             "title": "Collection",
             "type": "string"
           },
+          "expand_definitional": {
+            "default": false,
+            "description": "Whether the definitional template (rag-day-28) actually rewrote the query. ``True`` only when the regexp matched and a longer gloss was substituted — distinct from the toggle being on but no pattern matching.",
+            "title": "Expand Definitional",
+            "type": "boolean"
+          },
           "expand_pali": {
             "description": "Whether the query was rewritten via the Pāli glossary (rag-day-23) before encoding. ``False`` when either disabled by setting/request or when no glossary terms matched the query — the metadata field tracks the *effective* expansion, not just the toggle.",
             "title": "Expand Pali",
@@ -386,6 +416,12 @@
           "expand_parents": {
             "description": "Whether parent expansion (small-to-big) was applied.",
             "title": "Expand Parents",
+            "type": "boolean"
+          },
+          "foundational_boost": {
+            "default": false,
+            "description": "Whether the foundational mapping (rag-day-28) actually boosted at least one work for this query. ``True`` only when a curated term/alias was found and its work appeared in the candidate pool.",
+            "title": "Foundational Boost",
             "type": "boolean"
           },
           "n_candidates": {
@@ -419,6 +455,18 @@
       "QueryRequest": {
         "description": "Body of POST /api/query.",
         "properties": {
+          "expand_definitional": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Override definitional query expansion (rag-day-28). ``None`` (default) defers to the server-side setting ``glossary_expand_definitional_default``. ``True`` detects 'what is X?' / 'что такое X?' patterns and rewrites them into a longer gloss template before encode (closes the QA040 satipaṭṭhāna anomaly). ``False`` skips the rewrite for A/B debugging.",
+            "title": "Expand Definitional"
+          },
           "expand_pali": {
             "anyOf": [
               {
@@ -445,6 +493,18 @@
             ],
             "description": "Optional post-filter: drop hits whose ``work_canonical_id`` appears in this list. Use for per-tenant content policy (e.g. excluding texts a community considers sensitive). Filtering is post-RRF — ``top_k`` is honoured after the filter, so requests with a long forbidden list may return fewer than ``top_k`` sources.",
             "title": "Forbidden Works"
+          },
+          "foundational_boost": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Override foundational mapping boost (rag-day-28). ``None`` (default) defers to ``glossary_foundational_boost_default``. ``True`` applies a post-RRF score multiplier to canonical works of curated terms (data/glossary/foundational.yaml — e.g. dukkha → sn56.11). ``False`` disables the boost while keeping definitional expansion if enabled.",
+            "title": "Foundational Boost"
           },
           "language": {
             "anyOf": [

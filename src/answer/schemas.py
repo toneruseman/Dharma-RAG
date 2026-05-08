@@ -63,6 +63,20 @@ class AnswerRequest(BaseModel):
             "side-by-side debugging on the same question."
         ),
     )
+    expand_definitional: bool | None = Field(
+        default=None,
+        description=(
+            "Forwarded to retrieval. Override definitional query "
+            "expansion (rag-day-28). ``None`` defers to server default."
+        ),
+    )
+    foundational_boost: bool | None = Field(
+        default=None,
+        description=(
+            "Forwarded to retrieval. Override foundational mapping "
+            "boost (rag-day-28). ``None`` defers to server default."
+        ),
+    )
     forbidden_works: list[str] | None = Field(
         default=None,
         description=(

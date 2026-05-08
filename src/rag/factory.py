@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
     from src.embeddings.bge_m3 import BGEM3Encoder
+    from src.expand import FoundationalMatcher
     from src.processing.glossary import Glossary
     from src.retrieval.reranker import BGEReranker
 
@@ -47,6 +48,26 @@ def _try_load_glossary() -> Glossary | None:
         logger.exception("Pāli glossary failed to load. Expansion disabled.")
         return None
     return glossary
+
+
+def _try_load_foundational_matcher(*, default_boost: float) -> FoundationalMatcher | None:
+    """Load curated foundational mapping (rag-day-28), or ``None``.
+
+    Optional in the same sense as the Pāli glossary: missing YAML or
+    parse errors degrade gracefully — queries still run, just without
+    the canonical-sutta boost. Logged at WARNING to surface a misconfig.
+    """
+    try:
+        from src.expand import load_foundational_matcher
+
+        matcher = load_foundational_matcher(default_boost=default_boost)
+    except FileNotFoundError as exc:
+        logger.warning("Foundational mapping not loaded: %s. Boost disabled.", exc)
+        return None
+    except Exception:  # pragma: no cover — surface YAML schema errors
+        logger.exception("Foundational mapping failed to load. Boost disabled.")
+        return None
+    return matcher
 
 
 def get_rag_service(
@@ -116,6 +137,9 @@ def get_rag_service(
         session_maker=session_maker,
         settings=settings,
         glossary=_try_load_glossary(),
+        foundational_matcher=_try_load_foundational_matcher(
+            default_boost=settings.glossary_foundational_boost_factor,
+        ),
     )
 
 

@@ -270,6 +270,8 @@ class AnswerService:
             query=request.query,
             top_k=request.top_k,
             expand_pali=request.expand_pali,
+            expand_definitional=request.expand_definitional,
+            foundational_boost=request.foundational_boost,
             forbidden_works=request.forbidden_works,
         )
         retrieval_start = time.perf_counter()
@@ -347,6 +349,8 @@ class AnswerService:
             query=request.query,
             top_k=request.top_k,
             expand_pali=request.expand_pali,
+            expand_definitional=request.expand_definitional,
+            foundational_boost=request.foundational_boost,
             forbidden_works=request.forbidden_works,
         )
         retrieval_start = time.perf_counter()
