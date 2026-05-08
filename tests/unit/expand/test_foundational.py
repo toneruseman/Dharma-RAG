@@ -221,9 +221,10 @@ class TestApplyBoost:
 class TestLoadFoundationalMatcher:
     def test_real_yaml_loads(self) -> None:
         # Sanity: shipped foundational.yaml parses and has at least
-        # the 12 Sahaya essentials + 6 supplementary entries.
+        # the 12 Sahaya essentials + 6 supplementary + 5 rag-day-30
+        # Russian-foundational entries.
         matcher = load_foundational_matcher()
-        assert len(matcher.entries) >= 18
+        assert len(matcher.entries) >= 23
 
     def test_real_yaml_has_satipatthana(self) -> None:
         matcher = load_foundational_matcher()
@@ -236,6 +237,45 @@ class TestLoadFoundationalMatcher:
         matcher = load_foundational_matcher()
         result = matcher.match("What is dukkha?")
         assert "sn56.11" in result.boost_by_work
+
+    def test_real_yaml_russian_samadhi(self) -> None:
+        # rag-day-30: Russian definitional query for samādhi must
+        # surface AN 4.41 (Samādhibhāvanā Sutta).
+        matcher = load_foundational_matcher()
+        result = matcher.match("Что такое самадхи?")
+        assert "an4.41" in result.boost_by_work
+
+    def test_real_yaml_russian_bojjhanga(self) -> None:
+        # rag-day-30: «факторы пробуждения» → SN 46.3.
+        matcher = load_foundational_matcher()
+        result = matcher.match("Что такое факторы пробуждения?")
+        assert "sn46.3" in result.boost_by_work
+
+    def test_real_yaml_russian_three_refuges(self) -> None:
+        # rag-day-30: «три прибежища» → AN 6.10 (Mahānāma Sutta).
+        matcher = load_foundational_matcher()
+        result = matcher.match("Что такое три прибежища?")
+        assert "an6.10" in result.boost_by_work
+
+    def test_real_yaml_russian_brahmavihara(self) -> None:
+        # rag-day-30: «брахмавихара» → DN 13 (Tevijja).
+        matcher = load_foundational_matcher()
+        result = matcher.match("Что такое брахмавихара?")
+        assert "dn13" in result.boost_by_work
+
+    def test_real_yaml_dependent_origination_extended(self) -> None:
+        # rag-day-30: extended `dependent origination` aliases must
+        # match the new Russian phrases without breaking the canonical
+        # work pointer.
+        matcher = load_foundational_matcher()
+        result = matcher.match("что такое 12 нидан?")
+        assert "sn12.2" in result.boost_by_work
+
+    def test_real_yaml_lay_ethics_sila_alias(self) -> None:
+        # rag-day-30: extended `lay ethics` covers «нравственность» / sīla.
+        matcher = load_foundational_matcher()
+        result = matcher.match("Что такое нравственность?")
+        assert "dn31" in result.boost_by_work
 
     def test_missing_file_raises(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError):

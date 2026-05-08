@@ -61,6 +61,10 @@
     - paṭiccasamuppāda
     - патиччасамуппада
     - взаимозависимое возникновение
+    - обусловленное возникновение
+    - 12 нидан
+    - двенадцать нидан
+    - двенадцать звеньев
     - dependent arising
   works: [sn12.2]
   boost: 1.5
@@ -130,10 +134,17 @@
   aliases:
     - sigalovada
     - sigālovāda
+    - sigalaka
+    - advice to sigalaka
     - lay life
     - householder ethics
     - этика мирянина
     - advice to sigala
+    - sīla
+    - sila
+    - шила
+    - нравственность
+    - virtue
   works: [dn31]
   boost: 1.5
 
@@ -208,3 +219,74 @@
     - five training rules
   works: [an8.39, sn55.7]
   boost: 1.4
+
+# === rag-day-30: Russian foundational expansion ===
+# Термины с чётким каноническим первоисточником, частые в русских
+# definitional-запросах. См. docs/concepts/30-russian-foundational-expansion.md.
+
+# Aliases use Sujato's actual translation choices (verified against
+# corpus): samādhi → "immersion" (not "concentration"), bojjhaṅga →
+# "awakening factor", brahmavihāra → "divine abode", iddhipāda →
+# "bases of psychic power", tisaraṇa → "go for refuge". Diagnostic:
+# BM25 over chunk.fts_vector returned ~0 hits for the dictionary
+# translations and 1700+ hits for Sujato's choices.
+
+- term: samadhi
+  aliases:
+    - samādhi
+    - самадхи
+    - сосредоточение
+    - концентрация
+    - медитативное погружение
+    - immersion
+    - immersion further
+    - ways of developing immersion
+    - development of immersion
+  works: [an4.41]
+  boost: 1.4
+
+- term: bojjhanga
+  aliases:
+    - bojjhaṅga
+    - боджжанга
+    - факторы пробуждения
+    - семь факторов пробуждения
+    - семь факторов просветления
+    - awakening factors
+    - seven awakening factors
+  works: [sn46.3, sn46.51]
+  boost: 1.4
+
+- term: brahmavihara
+  aliases:
+    - brahmavihāra
+    - брахмавихара
+    - четыре безмерных
+    - четыре божественных пребывания
+    - divine abodes
+    - four immeasurables
+  works: [dn13]
+  boost: 1.4
+
+- term: three refuges
+  aliases:
+    - tisaraṇa
+    - tisarana
+    - трисарана
+    - три прибежища
+    - прибежище
+    - go for refuge
+    - going for refuge
+    - taking refuge
+  works: [an6.10]
+  boost: 1.4
+
+- term: iddhipada
+  aliases:
+    - iddhipāda
+    - иддхипада
+    - основы могущества
+    - основы достижений
+    - bases of psychic power
+  works: [sn51.13]
+  boost: 1.3

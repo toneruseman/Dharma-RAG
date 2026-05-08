@@ -50,6 +50,7 @@
 | [27 — qa_040 anomaly investigation](27-qa040-anomaly.md) | rag-day-27 | ✅ |
 | [28 — Definitional expansion + foundational mapping](28-definitional-expansion.md) | rag-day-28 | ✅ |
 | [29 — BM25 translation bridge](29-bm25-translation-bridge.md) | rag-day-29 | ✅ |
+| [30 — Russian foundational expansion](30-russian-foundational-expansion.md) | rag-day-30 | ✅ |
 
 ## Что появится позже
 
