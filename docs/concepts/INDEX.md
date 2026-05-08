@@ -53,6 +53,7 @@
 | [30 — Russian foundational expansion](30-russian-foundational-expansion.md) | rag-day-30 | ✅ |
 | [32 — Cumulative re-eval (28+29+30)](32-cumulative-eval.md) | rag-day-32 | ✅ |
 | [33 — Khuddaka Nikāya ingest](33-khuddaka-ingest.md) | rag-day-33 | ✅ |
+| [34 — Russian SC translations ingest](34-russian-sc-ingest.md) | rag-day-34 | ✅ |
 
 ## Что появится позже
 
