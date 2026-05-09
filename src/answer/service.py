@@ -275,6 +275,7 @@ class AnswerService:
             expand_definitional=request.expand_definitional,
             foundational_boost=request.foundational_boost,
             forbidden_works=request.forbidden_works,
+            corpora=request.corpora,
         )
         retrieval_start = time.perf_counter()
         rag_response = await self._rag.query(retrieval_request)
@@ -354,6 +355,7 @@ class AnswerService:
             expand_definitional=request.expand_definitional,
             foundational_boost=request.foundational_boost,
             forbidden_works=request.forbidden_works,
+            corpora=request.corpora,
         )
         retrieval_start = time.perf_counter()
         try:

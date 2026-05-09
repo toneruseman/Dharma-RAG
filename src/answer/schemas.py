@@ -85,6 +85,14 @@ class AnswerRequest(BaseModel):
             "reach the LLM."
         ),
     )
+    corpora: list[str] | None = Field(
+        default=None,
+        description=(
+            "Forwarded to retrieval (rag-day-37). ``None`` searches "
+            "everything. Use ``['canonical']`` for academic-only or "
+            "``['dharmaseed_talk']`` for modern-teachers-only answers."
+        ),
+    )
     model: str | None = Field(
         default=None,
         description=(

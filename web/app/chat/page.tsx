@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AnswerView } from "@/components/chat/AnswerView";
-import { ChatInput } from "@/components/chat/ChatInput";
+import { ChatInput, type CorpusChoice } from "@/components/chat/ChatInput";
 import { ConfidenceBadge } from "@/components/chat/ConfidenceBadge";
 import { FeedbackWidget } from "@/components/chat/FeedbackWidget";
 import { PullQuotePanel } from "@/components/chat/PullQuotePanel";
@@ -92,6 +92,7 @@ export default function ChatPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
   const [style, setStyle] = useState<AnswerStyle>("auto");
+  const [corpus, setCorpus] = useState<CorpusChoice>("all");
 
   // Hold the active AbortController so we can cancel on unmount or
   // when the user starts a new query while one is still streaming.
@@ -182,7 +183,12 @@ export default function ChatPage() {
     };
 
     controllerRef.current = streamAsk(
-      { query, top_k: 5, style },
+      {
+        query,
+        top_k: 5,
+        style,
+        corpora: corpus === "all" ? null : [corpus],
+      },
       {
         onRetrievalDone: (event) => {
           sources = event.sources;
@@ -252,6 +258,8 @@ export default function ChatPage() {
         isLoading={isStreaming}
         style={style}
         onStyleChange={setStyle}
+        corpus={corpus}
+        onCorpusChange={setCorpus}
         onSubmit={handleSubmit}
       />
 
