@@ -47,9 +47,17 @@ jobs:
       # CPU-only PyTorch wheel keeps the install under ~700 MB instead
       # of ~2.5 GB for the CUDA build. CI has no GPU so this is purely
       # a download-size win.
+      #
+      # `--index-strategy unsafe-best-match` is required because the
+      # pytorch CPU index ships partial mirrors of common deps (requests,
+      # urllib3, ...) at older versions; without it uv refuses to fall
+      # back to PyPI and the resolve dies on `qdrant-client requires
+      # tiktoken which requires requests>2.28.1`.
       - name: Install dependencies (CPU torch)
         run: |
-          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu \
+          uv pip install --system \
+            --index-strategy unsafe-best-match \
+            --extra-index-url https://download.pytorch.org/whl/cpu \
             -e ".[dev]"
 
       - name: Ruff lint
