@@ -347,9 +347,9 @@ async def test_max_tokens_scales_with_style() -> None:
         llm = _StubLLM()
         service = AnswerService(rag_service=rag, llm=llm)  # type: ignore[arg-type]
         await service.answer(AnswerRequest(query="x", style=style))  # type: ignore[arg-type]
-        assert (
-            llm.calls[0]["max_tokens"] == max_tok
-        ), f"style={style} expected max_tokens={max_tok}, got {llm.calls[0]['max_tokens']}"
+        assert llm.calls[0]["max_tokens"] == max_tok, (
+            f"style={style} expected max_tokens={max_tok}, got {llm.calls[0]['max_tokens']}"
+        )
 
 
 @pytest.mark.asyncio

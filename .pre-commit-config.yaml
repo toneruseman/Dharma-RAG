@@ -28,7 +28,7 @@ repos:
 
   # Ruff — линтер и форматтер
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.15.12
     hooks:
       - id: ruff
         args: [--fix]
