@@ -168,9 +168,7 @@ async def _run_probe(
             f"s={_or_dash(per.get('sparse'))} "
             f"b={_or_dash(per.get('bm25'))}"
         )
-        print(
-            f"  {i:>2}. {h.work_canonical_id:12s}{seg}  " f"rrf={h.rrf_score:.4f}  ({per_compact})"
-        )
+        print(f"  {i:>2}. {h.work_canonical_id:12s}{seg}  rrf={h.rrf_score:.4f}  ({per_compact})")
 
     # Per-channel ranks of target works (foundational suttas).
     expected_lower = {w.lower() for w in probe.expected}

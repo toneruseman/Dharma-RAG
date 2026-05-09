@@ -142,8 +142,8 @@ def build_glossary() -> dict[str, dict[str, Any]]:
         }
 
     print(f"  unique lemmas:       {len(out):>7}")
-    print(f"  with EN meanings:    {en_count:>7} ({en_count/len(out)*100:.1f}%)")
-    print(f"  with RU meanings:    {ru_count:>7} ({ru_count/len(out)*100:.1f}%)")
+    print(f"  with EN meanings:    {en_count:>7} ({en_count / len(out) * 100:.1f}%)")
+    print(f"  with RU meanings:    {ru_count:>7} ({ru_count / len(out) * 100:.1f}%)")
     print(f"  skipped raw entries: {skipped:>7}")
     return out
 

@@ -1,0 +1,62 @@
+# Continuous integration — runs on every push to main and on PRs.
+#
+# Closes B-003 / B-004 (issues #10 / #20). Uses uv for fast resolves;
+# caches the uv download cache between runs so a typical PR run is
+# ~1 min after the first cache-warming run (~5 min cold).
+#
+# Scope: ruff lint + format-check + pytest unit suite (12s wall).
+# Integration tests and mypy strict are intentionally out of scope —
+# they require Postgres + Qdrant + GPU and belong on a self-hosted
+# runner. We can add them as a second job once a runner exists.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint + unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          # Bust the cache when pyproject.toml changes — adding a
+          # dependency invalidates a stale resolution.
+          cache-dependency-glob: "pyproject.toml"
+
+      # CPU-only PyTorch wheel keeps the install under ~700 MB instead
+      # of ~2.5 GB for the CUDA build. CI has no GPU so this is purely
+      # a download-size win.
+      - name: Install dependencies (CPU torch)
+        run: |
+          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu \
+            -e ".[dev]"
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Unit tests
+        run: pytest tests/unit -q --basetemp=/tmp/pytest-tmp -p no:cacheprovider

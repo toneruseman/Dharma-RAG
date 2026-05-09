@@ -196,8 +196,7 @@ def _render_md(  # noqa: PLR0915 — long but linear; report rendering
     sign_h5 = "+" if delta_h5 >= 0 else ""
     sign_mrr = "+" if delta_mrr >= 0 else ""
     lines.append(
-        f"**Δ ref_hit@5 = {sign_h5}{delta_h5*100:.1f} pp**, "
-        f"**Δ MRR = {sign_mrr}{delta_mrr:.3f}**"
+        f"**Δ ref_hit@5 = {sign_h5}{delta_h5 * 100:.1f} pp**, **Δ MRR = {sign_mrr}{delta_mrr:.3f}**"
     )
     lines.append("")
 
@@ -206,21 +205,21 @@ def _render_md(  # noqa: PLR0915 — long but linear; report rendering
     lines.append("")
     if delta_h5 >= 0.02:
         lines.append(
-            f"Глоссарий **улучшает** ref_hit@5 на {delta_h5*100:.1f} pp на "
+            f"Глоссарий **улучшает** ref_hit@5 на {delta_h5 * 100:.1f} pp на "
             f"n=100. Положительный сигнал. Рекомендуется флипнуть "
             f"`glossary_expand_pali_default=True` в `src/config.py` "
             f"в follow-up коммите."
         )
     elif delta_h5 <= -0.02:
         lines.append(
-            f"Глоссарий **ухудшает** ref_hit@5 на {abs(delta_h5)*100:.1f} pp. "
+            f"Глоссарий **ухудшает** ref_hit@5 на {abs(delta_h5) * 100:.1f} pp. "
             f"Default остаётся `False`. Расследовать какие категории "
             f"запросов регрессируют (см. таблицы ниже) перед следующей "
             f"итерацией."
         )
     else:
         lines.append(
-            f"Глоссарий **нейтрален** на overall (Δ={delta_h5*100:.1f} pp). "
+            f"Глоссарий **нейтрален** на overall (Δ={delta_h5 * 100:.1f} pp). "
             f"Default остаётся `False` — не флипаем без явного выигрыша. "
             f"Возможно есть локальный лифт на bare-Pāli/RU подмножестве — "
             f"см. breakdown по языку ниже."

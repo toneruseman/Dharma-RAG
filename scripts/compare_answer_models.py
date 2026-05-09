@@ -124,7 +124,7 @@ def _render_md(
         cites = ", ".join(payload.get("citations", [])) or "(none)"
         lines.append(
             f"| `{model}` | "
-            f"{payload['latency_ms']/1000:.2f} | "
+            f"{payload['latency_ms'] / 1000:.2f} | "
             f"{payload['retrieval_latency_ms']:.0f} | "
             f"{payload['llm_latency_ms']:.0f} | "
             f"{tin} | {tout} | {cost_str} | {cites} |"
@@ -159,7 +159,7 @@ def main() -> int:
     parser.add_argument(
         "--models",
         default=",".join(DEFAULT_MODELS),
-        help=("Comma-separated OpenRouter model ids. Default: " f"{','.join(DEFAULT_MODELS)}."),
+        help=(f"Comma-separated OpenRouter model ids. Default: {','.join(DEFAULT_MODELS)}."),
     )
     parser.add_argument(
         "--style",
@@ -172,7 +172,7 @@ def main() -> int:
         "--out",
         type=Path,
         default=None,
-        help=("Output markdown path. Default: " "docs/MODEL_COMPARISON_<utc_timestamp>.md."),
+        help=("Output markdown path. Default: docs/MODEL_COMPARISON_<utc_timestamp>.md."),
     )
     args = parser.parse_args()
 
@@ -193,7 +193,7 @@ def main() -> int:
                 style=args.style,
             )
             print(
-                f"OK  latency={payload['latency_ms']/1000:.1f}s  "
+                f"OK  latency={payload['latency_ms'] / 1000:.1f}s  "
                 f"in={payload['metadata']['llm_tokens_in']}  "
                 f"out={payload['metadata']['llm_tokens_out']}"
             )

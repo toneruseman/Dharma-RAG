@@ -94,9 +94,7 @@ async def main() -> int:
                 texts = {r.id: r.text for r in text_rows}
 
                 for h in hits:
-                    print(
-                        f"  [{h.score:.4f}] {h.work_canonical_id:<10} " f"{h.segment_id or '-':<18}"
-                    )
+                    print(f"  [{h.score:.4f}] {h.work_canonical_id:<10} {h.segment_id or '-':<18}")
                     print(f"      {_fmt(texts.get(h.chunk_id, '<missing>'))}")
                 print()
     finally:

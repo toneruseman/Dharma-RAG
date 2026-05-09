@@ -239,12 +239,10 @@ def _render_md(  # noqa: PLR0915 — long but linear; report rendering
     lines.append("## Победители")
     lines.append("")
     lines.append(
-        f"- **Best ref_hit@5**: `{best_h5[0]}` "
-        f"({best_h5[1].overall.ref_hit_at_k.get(5, 0):.3f})"
+        f"- **Best ref_hit@5**: `{best_h5[0]}` ({best_h5[1].overall.ref_hit_at_k.get(5, 0):.3f})"
     )
     lines.append(
-        f"- **Best ref_hit@1**: `{best_h1[0]}` "
-        f"({best_h1[1].overall.ref_hit_at_k.get(1, 0):.3f})"
+        f"- **Best ref_hit@1**: `{best_h1[0]}` ({best_h1[1].overall.ref_hit_at_k.get(1, 0):.3f})"
     )
     lines.append(f"- **Best MRR**: `{best_mrr[0]}` ({best_mrr[1].overall.mrr:.3f})")
     lines.append("")
@@ -309,7 +307,7 @@ async def _amain(args: argparse.Namespace) -> int:
         async with session_maker() as session:
             for i, c in enumerate(_CELLS, start=1):
                 tag = f"max={c.max_meanings}" if c.use_glossary else "no-gloss"
-                print(f"Cell {i}/{len(_CELLS)}: {c.label}  " f"({tag}, rerank={c.rerank})")
+                print(f"Cell {i}/{len(_CELLS)}: {c.label}  ({tag}, rerank={c.rerank})")
                 results = await run_eval(
                     golden=golden,
                     encoder=encoder,

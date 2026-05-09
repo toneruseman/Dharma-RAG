@@ -223,7 +223,7 @@ def _render_md(  # noqa: PLR0915 — long but linear; report rendering
         f"`ref_hit@5 = {a_hit5:.3f}`, MRR = {a.mrr:.3f}"
     )
     lines.append(
-        f"- **B** (rag-day-28+29+30 full stack): " f"`ref_hit@5 = {b_hit5:.3f}`, MRR = {b.mrr:.3f}"
+        f"- **B** (rag-day-28+29+30 full stack): `ref_hit@5 = {b_hit5:.3f}`, MRR = {b.mrr:.3f}"
     )
     lines.append(f"- **Δ ref_hit@5**: `{delta:+.3f}` ({delta * 100:+.1f} pp)")
     lines.append("")
@@ -270,8 +270,7 @@ def _render_md(  # noqa: PLR0915 — long but linear; report rendering
             f"| ref_hit@{k} | {av:.3f} | {bv:.3f} | {bv - av:+.3f} | {(bv - av) * 100:+.1f} |"
         )
     lines.append(
-        f"| MRR | {a.mrr:.3f} | {b.mrr:.3f} | {b.mrr - a.mrr:+.3f} | "
-        f"{(b.mrr - a.mrr) * 100:+.1f} |"
+        f"| MRR | {a.mrr:.3f} | {b.mrr:.3f} | {b.mrr - a.mrr:+.3f} | {(b.mrr - a.mrr) * 100:+.1f} |"
     )
     lines.append("")
 
@@ -326,7 +325,7 @@ def _render_md(  # noqa: PLR0915 — long but linear; report rendering
         for f in fixed[:30]:
             q = f["query"].replace("|", "\\|")[:80]
             lines.append(
-                f"| {f['id']} | {q} | {f['expected']} | " f"{f['base_top5']} | {f['cand_top5']} |"
+                f"| {f['id']} | {q} | {f['expected']} | {f['base_top5']} | {f['cand_top5']} |"
             )
         if len(fixed) > 30:
             lines.append(f"| … | _({len(fixed) - 30} more)_ | | | |")
@@ -339,7 +338,7 @@ def _render_md(  # noqa: PLR0915 — long but linear; report rendering
         for f in regressed[:30]:
             q = f["query"].replace("|", "\\|")[:80]
             lines.append(
-                f"| {f['id']} | {q} | {f['expected']} | " f"{f['base_top5']} | {f['cand_top5']} |"
+                f"| {f['id']} | {q} | {f['expected']} | {f['base_top5']} | {f['cand_top5']} |"
             )
         if len(regressed) > 30:
             lines.append(f"| … | _({len(regressed) - 30} more)_ | | | |")

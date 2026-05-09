@@ -78,7 +78,7 @@ _STYLE_GUIDANCE: dict[AnswerStyle, str] = {
         "on all relevant passages. Don't pad, don't artificially compress."
     ),
     "concise": (
-        "Be concise. A focused 2-4 sentence answer with citations beats a " "long paraphrase."
+        "Be concise. A focused 2-4 sentence answer with citations beats a long paraphrase."
     ),
     "detailed": (
         "Provide a thorough, structured answer drawing on all relevant "

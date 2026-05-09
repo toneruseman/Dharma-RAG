@@ -1,13 +1,17 @@
 # Deploy to production
-# Activated in Phase 4 (day 50-56) after Hetzner VPS is set up
+#
+# DISABLED until Phase 4 (day 50-56) when the Hetzner VPS is provisioned.
+# The original on-push trigger was failing every commit since v0.1.0 with
+# `repository name must be lowercase` (ghcr.io rejects the uppercase
+# `Dharma-RAG` segment) and the deploy job has no `HETZNER_HOST` secret
+# anyway. Keeping the file as a recipe for the day we flip it back on;
+# the only trigger now is manual (workflow_dispatch). When ready, fix
+# the lowercase tag and add the secrets, then add `push:` back.
 
 name: Deploy to Production
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
-  workflow_dispatch:  # manual trigger
+  workflow_dispatch:  # manual trigger only — see header comment
 
 jobs:
   build-and-push:

@@ -181,8 +181,8 @@ async def _amain(args: argparse.Namespace) -> int:
     n_in_top20 = sum(1 for r in ranked if r.ref_rank != inf and r.ref_rank <= 20)
     print()
     print(
-        f"Headline: ref_hit@5={n_in_top5/len(ranked):.3f}  "
-        f"ref_hit@20={n_in_top20/len(ranked):.3f}  "
+        f"Headline: ref_hit@5={n_in_top5 / len(ranked):.3f}  "
+        f"ref_hit@20={n_in_top20 / len(ranked):.3f}  "
         f"missed (ref_rank=∞ at top_k={args.top_k}): {n_missed}/{len(ranked)}"
     )
     print()

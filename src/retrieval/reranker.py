@@ -298,7 +298,7 @@ def _scores_to_hits(
     """Helper kept public-ish for tests that want to bypass model calls."""
     if len(scores) != len(candidates):
         raise RuntimeError(
-            f"Mismatched lengths: {len(scores)} scores, " f"{len(candidates)} candidates."
+            f"Mismatched lengths: {len(scores)} scores, {len(candidates)} candidates."
         )
     hits = [
         RerankedHit(chunk_id=c.chunk_id, score=float(s), rrf_rank=c.rrf_rank)

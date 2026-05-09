@@ -49,9 +49,7 @@ class RetrievalDoneEvent(BaseModel):
     )
     pipeline_version: str = Field(
         ...,
-        description=(
-            "Retrieval pipeline version string from " ":class:`PipelineMetadata.version`."
-        ),
+        description=("Retrieval pipeline version string from :class:`PipelineMetadata.version`."),
     )
 
 
