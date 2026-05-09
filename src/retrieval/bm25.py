@@ -54,7 +54,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -129,6 +129,7 @@ async def search(
     *,
     limit: int = 10,
     include_parents: bool = False,
+    source_types: list[str] | None = None,
 ) -> list[BM25Hit]:
     """Run FTS against ``chunk.fts_vector`` and return ranked hits.
 
@@ -159,8 +160,25 @@ async def search(
     # websearch_to_tsquery never raises on weird input. to_tsquery would.
     # The CROSS JOIN style keeps the query readable; the planner handles
     # it the same as a subquery on this size.
+    # Per-corpus filter (rag-day-37): when ``source_types`` is set we
+    # restrict the JOINed Work rows. Empty list ≡ None (no filter) — a
+    # caller asking for "no corpora" gets everything rather than zero.
+    source_type_clause = ""
+    params: dict[str, Any] = {
+        "cfg": FTS_CONFIG,
+        "q": normalised,
+        "include_parents": include_parents,
+        "limit": limit,
+    }
+    if source_types:
+        # ``ANY(:source_types)`` keeps the parameter binding safe — the
+        # values are validated upstream against an enum-like check
+        # constraint on ``work.source_type``.
+        source_type_clause = "AND w.source_type = ANY(:source_types)"
+        params["source_types"] = source_types
+
     stmt = sa.text(
-        """
+        f"""
         SELECT
             c.id AS chunk_id,
             ts_rank_cd(c.fts_vector, q) AS score,
@@ -175,19 +193,12 @@ async def search(
              websearch_to_tsquery(:cfg, :q) AS q
         WHERE c.fts_vector @@ q
           AND (:include_parents OR c.is_parent = false)
+          {source_type_clause}
         ORDER BY score DESC
         LIMIT :limit
-        """
+        """  # noqa: S608 — source_type_clause is a static literal per branch
     )
-    result = await session.execute(
-        stmt,
-        {
-            "cfg": FTS_CONFIG,
-            "q": normalised,
-            "include_parents": include_parents,
-            "limit": limit,
-        },
-    )
+    result = await session.execute(stmt, params)
     return [
         BM25Hit(
             chunk_id=row.chunk_id,

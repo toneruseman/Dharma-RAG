@@ -254,6 +254,7 @@ class RAGService:
                 collection_name=collection,
                 expand_parents=expand_parents,
                 apply_post_fusion_boost=boost_callable,
+                source_types=request.corpora,
             )
 
         n_candidates = len(hits)
@@ -327,6 +328,7 @@ class RAGService:
                 rerank=False,
                 collection_name=collection,
                 expand_parents=False,
+                source_types=request.corpora,
             )
 
             fresh = [h for h in hits if str(h.chunk_id) not in excluded]

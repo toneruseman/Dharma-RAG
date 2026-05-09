@@ -43,6 +43,7 @@ def sparse_search(
     *,
     collection: str = COLLECTION_NAME,
     limit: int = 30,
+    qdrant_filter: Any | None = None,
 ) -> list[ChannelHit]:
     """Run a sparse-vector query against Qdrant's ``bge_m3_sparse`` head.
 
@@ -79,6 +80,7 @@ def sparse_search(
         limit=limit,
         with_payload=False,
         with_vectors=False,
+        query_filter=qdrant_filter,
     )
     points = getattr(response, "points", response)
     hits: list[ChannelHit] = []

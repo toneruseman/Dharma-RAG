@@ -91,6 +91,19 @@ class QueryRequest(BaseModel):
             "definitional expansion if enabled."
         ),
     )
+    corpora: list[str] | None = Field(
+        default=None,
+        description=(
+            "Per-corpus filter (rag-day-37). ``None`` (default) — search "
+            "everything. List of ``Work.source_type`` values to keep — "
+            "currently ``'canonical'`` (Pāli Canon, SuttaCentral) and "
+            "``'dharmaseed_talk'`` (modern oral teachings). "
+            "Translates to a Qdrant payload-filter and a "
+            "``WHERE source_type IN (…)`` on the BM25 channel. Use "
+            "``['canonical']`` for academic-only searches, "
+            "``['dharmaseed_talk']`` for «just modern teachers»."
+        ),
+    )
 
 
 class Source(BaseModel):
@@ -354,6 +367,16 @@ class ThreadRequest(BaseModel):
             "Cards per round. Smaller than /api/query because each card "
             "is a self-contained passage the user reads end-to-end — 3 "
             "is the sweet spot for a single scroll-view."
+        ),
+    )
+    corpora: list[str] | None = Field(
+        default=None,
+        description=(
+            "Per-corpus filter (rag-day-37). ``None`` (default) — search "
+            "everything. List of ``Work.source_type`` values to keep — "
+            "``'canonical'`` and/or ``'dharmaseed_talk'``. Use to drive "
+            "the «Источник» dropdown on the /thread page so the user "
+            "can listen to one teacher only / academic only / all."
         ),
     )
 

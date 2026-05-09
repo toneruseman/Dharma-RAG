@@ -107,6 +107,7 @@ async def _stream_contextualized(
                     Chunk.segment_id,
                     Chunk.pericope_id,
                     Work.canonical_id.label("work_canonical_id"),
+                    Work.source_type,
                 )
                 .select_from(Chunk)
                 .join(Instance, Instance.id == Chunk.instance_id)
@@ -136,6 +137,7 @@ async def _stream_contextualized(
                     is_parent=row.is_parent,
                     token_count=row.token_count,
                     pericope_id=row.pericope_id,
+                    source_type=row.source_type,
                 )
                 for row in rows
             ]

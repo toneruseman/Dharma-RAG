@@ -95,6 +95,11 @@ class ChunkForIndexing:
     is_parent: bool
     token_count: int
     pericope_id: str | None = None
+    # Discriminator carried into the Qdrant payload so retrieval can
+    # filter by corpus (``canonical`` / ``dharmaseed_talk`` —
+    # rag-day-37). Defaults to ``canonical`` for backwards compat with
+    # callers that built ``ChunkForIndexing`` before the field existed.
+    source_type: str = "canonical"
 
 
 @dataclass(slots=True)
@@ -256,6 +261,7 @@ def build_point(chunk: ChunkForIndexing, dense: list[float], sparse: dict[str, f
         "sequence": chunk.sequence,
         "is_parent": chunk.is_parent,
         "token_count": chunk.token_count,
+        "source_type": chunk.source_type,
     }
     if chunk.pericope_id is not None:
         payload["pericope_id"] = chunk.pericope_id

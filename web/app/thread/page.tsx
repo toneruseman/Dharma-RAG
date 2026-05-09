@@ -8,9 +8,30 @@ import { ApiError, threadNext, type ThreadCard } from "@/lib/api-client";
 
 const CARDS_PER_ROUND = 3;
 
+type CorpusChoice = "all" | "canonical" | "dharmaseed_talk";
+
+const CORPUS_OPTIONS: ReadonlyArray<{
+  value: CorpusChoice;
+  label: string;
+  hint: string;
+}> = [
+  { value: "all", label: "Все", hint: "канон + dharmaseed transcripts" },
+  { value: "canonical", label: "Канон", hint: "Pāli Canon (SuttaCentral)" },
+  {
+    value: "dharmaseed_talk",
+    label: "Dharmaseed",
+    hint: "Modern oral teachings (pilot: Rob Burbea)",
+  },
+];
+
+function corporaFor(choice: CorpusChoice): string[] | null {
+  return choice === "all" ? null : [choice];
+}
+
 export default function ThreadPage() {
   const [query, setQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState<string | null>(null);
+  const [corpus, setCorpus] = useState<CorpusChoice>("all");
   const [cards, setCards] = useState<ThreadCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +45,7 @@ export default function ThreadPage() {
         query: q,
         excluded_chunk_ids: excluded,
         top_k: CARDS_PER_ROUND,
+        corpora: corporaFor(corpus),
       });
       setCards((prev) => [...prev, ...response.cards]);
       setExhausted(response.exhausted);
@@ -101,11 +123,42 @@ export default function ThreadPage() {
           disabled={loading}
           aria-label="Question"
         />
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Enter to start · Shift+Enter for newline</span>
-          <Button type="submit" disabled={!canSubmit} size="sm">
-            {loading && cards.length === 0 ? "Searching…" : "Start thread"}
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div
+            role="radiogroup"
+            aria-label="Источник"
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 p-0.5"
+          >
+            {CORPUS_OPTIONS.map((opt) => {
+              const selected = corpus === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  title={opt.hint}
+                  disabled={loading}
+                  onClick={() => setCorpus(opt.value)}
+                  className={`rounded px-2 py-0.5 text-xs transition-colors ${
+                    selected
+                      ? "bg-background font-medium text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  } disabled:opacity-50`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline">
+              Enter to start · Shift+Enter for newline
+            </span>
+            <Button type="submit" disabled={!canSubmit} size="sm">
+              {loading && cards.length === 0 ? "Searching…" : "Start thread"}
+            </Button>
+          </div>
         </div>
       </form>
 

@@ -51,6 +51,7 @@ def dense_search(
     *,
     collection: str = COLLECTION_NAME,
     limit: int = 30,
+    qdrant_filter: Any | None = None,
 ) -> list[ChannelHit]:
     """Run a dense-vector query against Qdrant's ``bge_m3_dense`` head.
 
@@ -91,6 +92,7 @@ def dense_search(
         limit=limit,
         with_payload=False,
         with_vectors=False,
+        query_filter=qdrant_filter,
     )
     points = getattr(response, "points", response)
     hits: list[ChannelHit] = []

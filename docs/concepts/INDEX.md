@@ -56,6 +56,7 @@
 | [34 — Russian SC translations ingest](34-russian-sc-ingest.md) | rag-day-34 | ✅ |
 | [35 — Failure-driven curation + Context A/B](35-failure-driven-curation.md) | rag-day-35 | ✅ |
 | [36 — Бесконечный тред (LLM-free)](36-infinite-thread.md) | rag-day-36 | ✅ MVP |
+| [37 — Dharmaseed corpus (oral talks)](37-dharmaseed-corpus.md) | rag-day-37 | ✅ pilot Burbea |
 
 ## Что появится позже
 

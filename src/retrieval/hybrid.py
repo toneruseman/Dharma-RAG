@@ -89,6 +89,28 @@ DEFAULT_RERANK: bool = False
 DEFAULT_EXPAND_PARENTS: bool = True
 
 
+def _build_source_type_filter(source_types: list[str] | None):  # type: ignore[no-untyped-def]
+    """Build a Qdrant ``Filter`` payload-condition or return ``None``.
+
+    Lazy-imports ``qdrant_client.models`` so this function stays free
+    of the dependency for callers that never set ``source_types``
+    (most of the test suite). Returns ``None`` for an empty / missing
+    list — the channel calls then skip filtering entirely.
+    """
+    if not source_types:
+        return None
+    from qdrant_client.models import FieldCondition, Filter, MatchAny  # noqa: PLC0415
+
+    return Filter(
+        must=[
+            FieldCondition(
+                key="source_type",
+                match=MatchAny(any=source_types),
+            )
+        ]
+    )
+
+
 class EncoderProtocol(Protocol):
     """Subset of :class:`src.embeddings.bge_m3.BGEM3Encoder` we use."""
 
@@ -151,6 +173,7 @@ async def hybrid_search(
     expand_parents: bool = DEFAULT_EXPAND_PARENTS,
     bm25_query: str | None = None,
     apply_post_fusion_boost: Callable[[list[HybridHit]], list[HybridHit]] | None = None,
+    source_types: list[str] | None = None,
 ) -> tuple[list[HybridHit], HybridSearchTimings]:
     """Run all stages for ``query`` and return fused/enriched/(reranked) hits.
 
@@ -226,12 +249,18 @@ async def hybrid_search(
     t_channels = time.perf_counter()
     with tracer.start_as_current_span("hybrid.channels") as channels_span:
         channels_span.set_attribute("hybrid.per_channel_limit", effective_channel_limit)
+        # Build a Qdrant payload filter once (rag-day-37) — both dense
+        # and sparse channels reuse it. Empty / None ``source_types``
+        # ⇒ no filter, search everything.
+        qdrant_filter = _build_source_type_filter(source_types)
+
         dense_task = asyncio.to_thread(
             dense.dense_search,
             qdrant_client,
             dense_vec,
             collection=collection_name,
             limit=effective_channel_limit,
+            qdrant_filter=qdrant_filter,
         )
         sparse_task = asyncio.to_thread(
             sparse.sparse_search,
@@ -239,6 +268,7 @@ async def hybrid_search(
             sparse_weights,
             collection=collection_name,
             limit=effective_channel_limit,
+            qdrant_filter=qdrant_filter,
         )
         # BM25 deliberately receives the *un-expanded* query (rag-day-28).
         # Postgres FTS keeps precision on a tight, raw term — feeding the
@@ -246,7 +276,12 @@ async def hybrid_search(
         # "Discourse on" / "Foundations of". ``bm25_query`` lets the
         # caller hand a pre-Pāli-expansion form when desired (currently
         # the same string for stub/test paths).
-        bm25_task = bm25.search(db_session, bm25_query or query, limit=effective_channel_limit)
+        bm25_task = bm25.search(
+            db_session,
+            bm25_query or query,
+            limit=effective_channel_limit,
+            source_types=source_types,
+        )
         dense_hits, sparse_hits, bm25_hits = await asyncio.gather(
             dense_task, sparse_task, bm25_task
         )

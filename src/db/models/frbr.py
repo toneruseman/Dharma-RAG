@@ -62,6 +62,15 @@ class Work(Base, TimestampMixin):
         Boolean, nullable=False, default=False, server_default="false"
     )
 
+    # Discriminator between canonical scripture and modern dharma talks
+    # (rag-day-37). Drives the per-corpus retrieval filter — single
+    # ``dharma_v2`` Qdrant collection, payload tag splits the index.
+    # Values constrained at the DB layer to ``canonical`` /
+    # ``dharmaseed_talk`` (migration 007 check constraint).
+    source_type: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="canonical", index=True
+    )
+
     metadata_json: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default="{}"
     )
