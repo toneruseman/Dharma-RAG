@@ -148,11 +148,12 @@ export default function ChatPage() {
     let pipelineVersion = "";
     const wallStartMs = performance.now();
 
+    // Live updates always REPLACE the last round in-place (we seed an
+    // empty round first, then mutate it through retrieval_done /
+    // token / done events). Without this, every SSE frame appended a
+    // new round and the page filled with phantom duplicates.
     const replaceTail = (next: AnswerResponse) => {
-      setRounds((prev) => {
-        if (replaceLast || prev.length === 0) return [...prev.slice(0, -1), next];
-        return [...prev, next];
-      });
+      setRounds((prev) => [...prev.slice(0, -1), next]);
     };
 
     const refreshLive = () => {
