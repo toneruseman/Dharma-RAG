@@ -7,6 +7,7 @@ import { ChatInput, type CorpusChoice } from "@/components/chat/ChatInput";
 import { ConfidenceBadge } from "@/components/chat/ConfidenceBadge";
 import { FeedbackWidget } from "@/components/chat/FeedbackWidget";
 import { PullQuotePanel } from "@/components/chat/PullQuotePanel";
+import { Button } from "@/components/ui/button";
 import type { AnswerResponse, AnswerSnapshot, AnswerStyle, Source } from "@/lib/api-client";
 import { computeConfidence } from "@/lib/confidence";
 import { streamAsk, type DoneEvent } from "@/lib/sse";
@@ -16,11 +17,6 @@ const HIGHLIGHT_DURATION_MS = 1500;
 /**
  * Build a synthetic `AnswerResponse` shape from the streaming events
  * so we can reuse `<AnswerView>` and `<PullQuotePanel>` unchanged.
- *
- * During streaming `latency_ms` / `retrieval_latency_ms` /
- * `llm_latency_ms` come from `RetrievalDoneEvent` for retrieval and
- * `wallStartMs` for the rest. After `done` we replace this with the
- * authoritative version from the server.
  */
 function buildLiveResponse({
   query,
@@ -49,10 +45,6 @@ function buildLiveResponse({
     retrieval_latency_ms: retrievalLatencyMs,
     llm_latency_ms: Math.max(0, elapsed - retrievalLatencyMs),
     metadata: {
-      // Real ``trace_id`` arrives in ``DoneEvent.metadata`` and replaces
-      // this placeholder via ``setResponse`` below. The empty string
-      // prevents the FeedbackWidget from rendering during streaming
-      // (it gates on a non-empty trace_id).
       trace_id: "",
       pipeline_version: pipelineVersion,
       llm_model: "streaming…",
@@ -87,28 +79,25 @@ function buildSnapshot(response: AnswerResponse): AnswerSnapshot {
 }
 
 export default function ChatPage() {
+  // Thread mode (rag-day-37 enhancement): each round is one LLM call
+  // for the same query, with prior rounds' work_canonical_ids stuffed
+  // into ``forbidden_works`` so each press of «Далее» surfaces
+  // different sources.
+  const [rounds, setRounds] = useState<AnswerResponse[]>([]);
+  const [activeQuery, setActiveQuery] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [response, setResponse] = useState<AnswerResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastQuery, setLastQuery] = useState<string | null>(null);
+
   const [style, setStyle] = useState<AnswerStyle>("auto");
   const [corpus, setCorpus] = useState<CorpusChoice>("all");
 
-  // Hold the active AbortController so we can cancel on unmount or
-  // when the user starts a new query while one is still streaming.
   const controllerRef = useRef<AbortController | null>(null);
 
-  // Two-way anchoring state for the citation ↔ pull-quote pairing.
-  // `highlightedQuoteId` is set when the user hovers a citation in the
-  // answer body; `highlightedCitationId` is set when the user clicks
-  // a pull-quote card. Each clears itself after HIGHLIGHT_DURATION_MS.
   const [highlightedQuoteId, setHighlightedQuoteId] = useState<string | null>(null);
   const [highlightedCitationId, setHighlightedCitationId] = useState<string | null>(null);
   const quoteHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const citationHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup on unmount — drop the in-flight stream so it doesn't try
-  // to setState after the component is gone.
   useEffect(() => {
     return () => {
       controllerRef.current?.abort();
@@ -118,10 +107,6 @@ export default function ChatPage() {
   }, []);
 
   function handleCitationActivate(workId: string) {
-    // Highlight only — no auto-scroll. The badge's own tooltip
-    // (concept 20) shows the snippet at the cursor; the pull-quote
-    // panel is sticky-visible on lg+ screens so the user can glance
-    // at it without the document jumping under them.
     setHighlightedQuoteId(workId);
     if (quoteHighlightTimer.current) clearTimeout(quoteHighlightTimer.current);
     quoteHighlightTimer.current = setTimeout(
@@ -131,9 +116,6 @@ export default function ChatPage() {
   }
 
   function handleQuoteClick(workId: string) {
-    // Always jump to occurrence 0 — the first appearance — even if
-    // there are duplicates. The remaining ones are typically a few
-    // sentences away and within the same scroll viewport.
     const target = document.getElementById(`cite-${workId}-0`);
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -146,20 +128,18 @@ export default function ChatPage() {
     );
   }
 
+  // Last round is the one currently rendering / streaming. Confidence
+  // is computed only for the latest round to keep the indicator
+  // aligned with what the user is reading right now.
+  const lastRound = rounds[rounds.length - 1] ?? null;
   const confidence = useMemo(
-    () => (response ? computeConfidence(response.answer, response.sources) : null),
-    [response],
+    () => (lastRound ? computeConfidence(lastRound.answer, lastRound.sources) : null),
+    [lastRound],
   );
 
-  function handleSubmit(query: string) {
-    // Abort any prior in-flight stream — submitting a new query
-    // while the previous is still running shouldn't interleave.
-    controllerRef.current?.abort();
-
+  function startRound(query: string, forbiddenWorks: string[], replaceLast: boolean) {
     setIsStreaming(true);
     setError(null);
-    setLastQuery(query);
-    setResponse(null);
 
     let answerText = "";
     let sources: Source[] = [];
@@ -168,8 +148,15 @@ export default function ChatPage() {
     let pipelineVersion = "";
     const wallStartMs = performance.now();
 
+    const replaceTail = (next: AnswerResponse) => {
+      setRounds((prev) => {
+        if (replaceLast || prev.length === 0) return [...prev.slice(0, -1), next];
+        return [...prev, next];
+      });
+    };
+
     const refreshLive = () => {
-      setResponse(
+      replaceTail(
         buildLiveResponse({
           query,
           answer: answerText,
@@ -182,12 +169,43 @@ export default function ChatPage() {
       );
     };
 
+    // Seed the round so the UI renders «Connecting…» / «Generating answer…»
+    // placeholders even before the first SSE frame arrives.
+    setRounds((prev) =>
+      replaceLast
+        ? [
+            ...prev.slice(0, -1),
+            buildLiveResponse({
+              query,
+              answer: "",
+              sources: [],
+              citations: [],
+              retrievalLatencyMs: 0,
+              pipelineVersion: "",
+              wallStartMs,
+            }),
+          ]
+        : [
+            ...prev,
+            buildLiveResponse({
+              query,
+              answer: "",
+              sources: [],
+              citations: [],
+              retrievalLatencyMs: 0,
+              pipelineVersion: "",
+              wallStartMs,
+            }),
+          ],
+    );
+
     controllerRef.current = streamAsk(
       {
         query,
         top_k: 5,
         style,
         corpora: corpus === "all" ? null : [corpus],
+        forbidden_works: forbiddenWorks.length > 0 ? forbiddenWorks : null,
       },
       {
         onRetrievalDone: (event) => {
@@ -204,13 +222,9 @@ export default function ChatPage() {
           if (!citations.includes(event.id)) {
             citations = [...citations, event.id];
           }
-          // No setState — citation events are advisory; AnswerView
-          // re-parses the buffer on each render.
         },
         onDone: (event: DoneEvent) => {
-          // Replace the synthesised live shape with the authoritative
-          // server-side result (correct latency_ms, real metadata).
-          setResponse({
+          replaceTail({
             query,
             answer: event.answer,
             sources,
@@ -234,11 +248,44 @@ export default function ChatPage() {
     );
   }
 
+  function handleSubmit(query: string) {
+    controllerRef.current?.abort();
+    setRounds([]);
+    setActiveQuery(query);
+    startRound(query, [], false);
+  }
+
+  function handleNext() {
+    if (!activeQuery || isStreaming) return;
+    // Accumulate every work_canonical_id we've already shown across
+    // all completed rounds. ``forbidden_works`` is post-RRF, so a long
+    // list naturally exhausts the pool — that is the «End of thread»
+    // signal.
+    const seen = new Set<string>();
+    for (const r of rounds) {
+      for (const s of r.sources) seen.add(s.work_canonical_id);
+    }
+    startRound(activeQuery, [...seen], false);
+  }
+
+  function handleNewQuestion() {
+    controllerRef.current?.abort();
+    setRounds([]);
+    setActiveQuery(null);
+    setIsStreaming(false);
+    setError(null);
+  }
+
   function handleStop() {
     controllerRef.current?.abort();
     controllerRef.current = null;
     setIsStreaming(false);
   }
+
+  // «End of thread» when the latest non-streaming round returned no
+  // sources — pool is exhausted given the accumulated forbidden_works.
+  const exhausted =
+    !isStreaming && lastRound !== null && lastRound.sources.length === 0 && rounds.length > 1;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-12 sm:px-6 sm:py-16">
@@ -249,8 +296,9 @@ export default function ChatPage() {
         </h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Answers are grounded in retrieved Buddhist source texts and cite them inline
-          with <span className="font-mono">[work_id]</span>. Click any citation to open
-          the passage in the Reading Room.
+          with <span className="font-mono">[work_id]</span>. Press{" "}
+          <span className="font-mono">Далее</span> for another angle on the same
+          question, drawing from new sources each round.
         </p>
       </header>
 
@@ -263,13 +311,6 @@ export default function ChatPage() {
         onSubmit={handleSubmit}
       />
 
-      {isStreaming && lastQuery && !response ? (
-        <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
-          Connecting…{" "}
-          <span className="dharma-text italic text-foreground">“{lastQuery}”</span>
-        </div>
-      ) : null}
-
       {error ? (
         <div
           role="alert"
@@ -280,50 +321,97 @@ export default function ChatPage() {
         </div>
       ) : null}
 
-      {response ? (
+      {activeQuery && rounds.length > 0 ? (
         <section className="grid gap-8 lg:grid-cols-[1fr_280px]">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>
-                Latency: {Math.round(response.latency_ms)} ms · retrieval{" "}
-                {Math.round(response.retrieval_latency_ms)} ms · LLM{" "}
-                {Math.round(response.llm_latency_ms)} ms
-              </span>
-              {response.metadata?.llm_model ? (
-                <span className="font-mono">{response.metadata.llm_model}</span>
-              ) : null}
-              {isStreaming ? (
-                <button
-                  type="button"
-                  onClick={handleStop}
-                  className="rounded border border-border px-2 py-0.5 text-xs hover:bg-accent"
+          <div className="flex flex-col gap-8">
+            {rounds.map((round, idx) => {
+              const isLast = idx === rounds.length - 1;
+              const roundIsStreaming = isLast && isStreaming;
+              return (
+                <article
+                  key={`${activeQuery}-${idx}`}
+                  className="flex flex-col gap-3 border-l-2 border-border pl-4"
                 >
-                  Stop
-                </button>
-              ) : null}
+                  <header className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <span className="rounded-md bg-accent/60 px-1.5 py-0.5 font-mono font-semibold text-accent-foreground">
+                      Round {idx + 1}
+                    </span>
+                    <span>
+                      Latency: {Math.round(round.latency_ms)} ms · retrieval{" "}
+                      {Math.round(round.retrieval_latency_ms)} ms · LLM{" "}
+                      {Math.round(round.llm_latency_ms)} ms
+                    </span>
+                    {round.metadata?.llm_model ? (
+                      <span className="font-mono">{round.metadata.llm_model}</span>
+                    ) : null}
+                    {roundIsStreaming ? (
+                      <button
+                        type="button"
+                        onClick={handleStop}
+                        className="rounded border border-border px-2 py-0.5 text-xs hover:bg-accent"
+                      >
+                        Stop
+                      </button>
+                    ) : null}
+                  </header>
+                  {isLast && confidence && !roundIsStreaming ? (
+                    <ConfidenceBadge verdict={confidence} />
+                  ) : null}
+                  <AnswerView
+                    response={round}
+                    isStreaming={roundIsStreaming}
+                    highlightedCitationId={isLast ? highlightedCitationId : null}
+                    onCitationActivate={isLast ? handleCitationActivate : undefined}
+                  />
+                  {isLast &&
+                  !roundIsStreaming &&
+                  round.metadata?.trace_id &&
+                  round.answer.trim().length > 0 ? (
+                    <FeedbackWidget
+                      key={round.metadata.trace_id}
+                      traceId={round.metadata.trace_id}
+                      snapshot={buildSnapshot(round)}
+                    />
+                  ) : null}
+                </article>
+              );
+            })}
+
+            <div className="flex flex-wrap items-center gap-3 pl-4 pt-2">
+              {exhausted ? (
+                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  End of thread · {rounds.length - 1} round{rounds.length === 2 ? "" : "s"}
+                </span>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleNext}
+                  disabled={isStreaming}
+                >
+                  {isStreaming ? "Generating…" : "Далее"}
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleNewQuestion}
+                disabled={isStreaming}
+              >
+                Новый вопрос
+              </Button>
             </div>
-            {confidence && !isStreaming ? <ConfidenceBadge verdict={confidence} /> : null}
-            <AnswerView
-              response={response}
-              isStreaming={isStreaming}
-              highlightedCitationId={highlightedCitationId}
-              onCitationActivate={handleCitationActivate}
-            />
-            {!isStreaming && response.metadata?.trace_id && response.answer.trim().length > 0 ? (
-              <FeedbackWidget
-                key={response.metadata.trace_id}
-                traceId={response.metadata.trace_id}
-                snapshot={buildSnapshot(response)}
-              />
-            ) : null}
           </div>
-          <PullQuotePanel
-            answer={response.answer}
-            sources={response.sources}
-            citations={response.citations}
-            highlightedQuoteId={highlightedQuoteId}
-            onQuoteClick={handleQuoteClick}
-          />
+          {lastRound ? (
+            <PullQuotePanel
+              answer={lastRound.answer}
+              sources={lastRound.sources}
+              citations={lastRound.citations}
+              highlightedQuoteId={highlightedQuoteId}
+              onQuoteClick={handleQuoteClick}
+            />
+          ) : null}
         </section>
       ) : null}
     </main>
