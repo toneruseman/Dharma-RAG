@@ -251,6 +251,62 @@ export async function sendFeedback(
 }
 
 // ---------------------------------------------------------------------------
+// Works / Browse types (not in generated api-types.ts yet)
+// ---------------------------------------------------------------------------
+
+export type TeacherCard = {
+  slug: string;
+  name: string;
+  talk_count: number;
+  tradition_code: string | null;
+};
+
+export type WorkCard = {
+  canonical_id: string;
+  title: string;
+  talk_date: string | null;
+  tradition_code: string | null;
+};
+
+export type WorkListResponse = {
+  items: WorkCard[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+/**
+ * Fetch teachers who have dharmaseed talks in the corpus.
+ * Drives the "Dharma Talks" section on the /read landing page.
+ */
+export async function getTeachers(init?: RequestInit): Promise<TeacherCard[]> {
+  const response = await fetch(`${API_BASE_URL}/api/works/teachers`, init);
+  return parseOrThrow<TeacherCard[]>(response);
+}
+
+/**
+ * Fetch a paginated list of works for a given teacher / source_type.
+ * Drives the /read/teachers/[slug] page.
+ */
+export async function getWorks(
+  params: {
+    source_type?: string;
+    teacher_slug?: string;
+    limit?: number;
+    offset?: number;
+  },
+  init?: RequestInit,
+): Promise<WorkListResponse> {
+  const qs = new URLSearchParams();
+  if (params.source_type) qs.set("source_type", params.source_type);
+  if (params.teacher_slug) qs.set("teacher_slug", params.teacher_slug);
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.offset != null) qs.set("offset", String(params.offset));
+  const response = await fetch(`${API_BASE_URL}/api/works?${qs}`, init);
+  return parseOrThrow<WorkListResponse>(response);
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
