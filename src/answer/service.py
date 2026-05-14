@@ -39,10 +39,14 @@ from src.rag.schemas import QueryRequest, Source
 logger = logging.getLogger(__name__)
 
 
-# Shared rules across all styles. The only thing that changes per
-# style is the trailing length-guidance bullet. Keeping the bulk
-# shared means style-specific changes are a one-line diff.
-_BASE_SYSTEM_PROMPT: str = """\
+# ---------------------------------------------------------------------------
+# System prompts — one base per corpus type, shared style suffix.
+#
+# Corpus detection uses work_canonical_id heuristic: canonical IDs have
+# no underscores (mn36, sn56.11); Dharmaseed IDs do (rob_burbea_60869).
+# ---------------------------------------------------------------------------
+
+_BASE_SYSTEM_PROMPT_CANONICAL: str = """\
 You are a knowledgeable assistant on the Pāli Canon (early Buddhist scripture in the Theravāda tradition).
 
 You answer using ONLY the source passages provided in the user message. Do not draw on outside knowledge, do not speculate.
@@ -56,6 +60,45 @@ Rules:
 - If the sources do not contain enough information to answer the question, say so honestly. Do not fabricate. Examples of acceptable fallback: "The provided passages do not directly address X." / "На основе предоставленных источников нельзя ответить на этот вопрос."
 - Preserve canonical Pāli terms with their diacritics on first mention (jhāna, paṭiccasamuppāda, dukkha, sati). After first mention you may use a transliteration (jhana) or translation in the answer's target language.
 - Stay within the Theravāda tradition reflected in the Pāli Canon. Do not introduce Mahāyāna or Vajrayāna concepts unless a source passage explicitly discusses them."""
+
+_BASE_SYSTEM_PROMPT_DHARMASEED: str = """\
+You are a knowledgeable assistant helping users explore dharma teachings from recorded talks by experienced Buddhist meditation teachers.
+
+You answer using ONLY the transcript excerpts provided in the user message. Do not draw on outside knowledge, do not speculate.
+
+Rules:
+- Answer in the language of the user's question. Russian question → Russian answer; English question → English answer.
+- Cite sources inline using the format [work_id] shown above each passage, e.g. "as the teacher explains [rob_burbea_60869]".
+- Use the work_id EXACTLY as shown in the source header — always lowercase ASCII with underscores and digits as-is. Do NOT transliterate to Cyrillic: write [rob_burbea_60869], NEVER [роб_бёрбеа_60869]. This rule applies even when the answer is in Russian.
+- Output plain prose only. Do NOT use markdown formatting: no **bold**, no *italics*, no headers (#, ##), no bullet/numbered lists. The renderer is plain-text with bracket citations only.
+- The source passages are transcribed spoken teachings — informal, sometimes incomplete sentences. Synthesise the teacher's meaning into fluent, complete sentences. Do NOT reproduce garbled transcript fragments verbatim.
+- When multiple sources are relevant, cite them all.
+- If the sources do not contain enough information to answer the question, say so honestly. Do not fabricate.
+- Preserve key dharma terms with diacritics on first mention (jhāna, sati, dukkha, samādhi). After first mention you may use a simpler form in the answer's target language."""
+
+_BASE_SYSTEM_PROMPT_MIXED: str = """\
+You are a knowledgeable assistant on Buddhist teachings. You have access to both passages from the Pāli Canon and excerpts from recorded dharma talks by contemporary teachers.
+
+You answer using ONLY the source passages provided in the user message. Do not draw on outside knowledge, do not speculate.
+
+Rules:
+- Answer in the language of the user's question. Russian question → Russian answer; English question → English answer.
+- Cite sources inline using the format [work_id] shown above each passage. Multiple works in one bracket are fine: [mn36, rob_burbea_60869].
+- Use the work_id EXACTLY as shown in the source header — always lowercase ASCII. Do NOT transliterate to Cyrillic. This rule applies even when the answer is in Russian.
+- Output plain prose only. Do NOT use markdown formatting: no **bold**, no *italics*, no headers (#, ##), no bullet/numbered lists.
+- Talk transcript passages are informal spoken teachings — synthesise their meaning into fluent sentences rather than reproducing garbled fragments verbatim.
+- When multiple sources are relevant, cite them all.
+- If the sources do not contain enough information to answer the question, say so honestly. Do not fabricate.
+- Preserve key dharma terms with diacritics on first mention (jhāna, sati, dukkha, samādhi)."""
+
+# Backwards-compat alias — canonical prompt is the original behaviour.
+_BASE_SYSTEM_PROMPT: str = _BASE_SYSTEM_PROMPT_CANONICAL
+
+_BASE_BY_CORPUS: dict[str, str] = {
+    "canonical": _BASE_SYSTEM_PROMPT_CANONICAL,
+    "dharmaseed": _BASE_SYSTEM_PROMPT_DHARMASEED,
+    "mixed": _BASE_SYSTEM_PROMPT_MIXED,
+}
 
 
 # Output-token cap per style. Sized so the model never gets cut
@@ -88,14 +131,47 @@ _STYLE_GUIDANCE: dict[AnswerStyle, str] = {
 }
 
 
-def build_system_prompt(style: AnswerStyle) -> str:
-    """Compose the full system prompt for the requested style.
+def _detect_corpus_type(sources: list[Source]) -> str:
+    """Return 'canonical', 'dharmaseed', or 'mixed' based on work_canonical_ids.
 
-    The ``base + per-style suffix`` split keeps the bulk of the prompt
-    immutable so style tweaks don't risk breaking unrelated behaviour
-    (citation format, language matching, Theravāda-only).
+    Heuristic: canonical IDs never contain underscores (mn36, sn56.11);
+    Dharmaseed IDs do (rob_burbea_60869). Fast and zero-cost.
     """
-    return _BASE_SYSTEM_PROMPT + "\n- " + _STYLE_GUIDANCE[style]
+    if not sources:
+        return "canonical"
+    has_canonical = any("_" not in s.work_canonical_id for s in sources)
+    has_dharmaseed = any("_" in s.work_canonical_id for s in sources)
+    if has_canonical and has_dharmaseed:
+        return "mixed"
+    return "dharmaseed" if has_dharmaseed else "canonical"
+
+
+_USER_MSG_INTRO: dict[str, str] = {
+    "canonical": (
+        "The following passages from the Pāli Canon were retrieved as relevant to the user's question."
+    ),
+    "dharmaseed": (
+        "The following excerpts from recorded dharma talks (transcribed audio) were retrieved "
+        "as relevant to the user's question. These are informal spoken teachings — synthesise "
+        "the meaning into fluent sentences; do not reproduce incomplete transcript fragments verbatim."
+    ),
+    "mixed": (
+        "The following source passages were retrieved — some from the Pāli Canon (canonical "
+        "scripture), others from recorded dharma talks (transcribed audio). Talk excerpts are "
+        "informal speech: synthesise their meaning rather than reproducing fragments verbatim."
+    ),
+}
+
+
+def build_system_prompt(style: AnswerStyle, corpus_type: str = "canonical") -> str:
+    """Compose the full system prompt for the requested style and corpus type.
+
+    ``corpus_type`` selects the base prompt: 'canonical' (Pāli Canon),
+    'dharmaseed' (talk transcripts), or 'mixed'. Defaults to 'canonical'
+    for backwards-compat with callers that pass only ``style``.
+    """
+    base = _BASE_BY_CORPUS.get(corpus_type, _BASE_SYSTEM_PROMPT_CANONICAL)
+    return base + "\n- " + _STYLE_GUIDANCE[style]
 
 
 # Kept for backwards-compat with code that imports the module-level
@@ -121,17 +197,14 @@ def _build_user_message(query: str, sources: list[Source]) -> str:
     """Compose the user message with numbered source passages.
 
     Each source is wrapped with its ``work_canonical_id`` so the LLM
-    can cite it back. We use plain markdown-ish headers rather than
-    XML tags — Claude handles both, and plain text is easier to read
-    in logs / Phoenix spans.
+    can cite it back. The intro line is corpus-aware: canonical sources
+    are labelled as Pāli Canon; Dharmaseed sources as talk transcripts.
     """
     if not sources:
         return f"User question: {query}\n\n(No source passages were retrieved.)"
 
-    parts: list[str] = [
-        "The following passages from the Pāli Canon were retrieved as relevant to the user's question.",
-        "",
-    ]
+    corpus_type = _detect_corpus_type(sources)
+    parts: list[str] = [_USER_MSG_INTRO[corpus_type], ""]
     for i, src in enumerate(sources, start=1):
         seg = f" ({src.segment_id})" if src.segment_id else ""
         parts.append(f"--- Source {i} [{src.work_canonical_id}]{seg} ---")
@@ -291,10 +364,11 @@ class AnswerService:
             tokens_in = 0
             tokens_out = 0
         else:
+            corpus_type = _detect_corpus_type(list(sources))
             user_message = _build_user_message(request.query, list(sources))
             llm_start = time.perf_counter()
             llm_result = await self._llm.complete(
-                system_prompt=build_system_prompt(effective_style),
+                system_prompt=build_system_prompt(effective_style, corpus_type),
                 user_message=user_message,
                 model=request.model,
                 max_tokens=_MAX_TOKENS_BY_STYLE[effective_style],
@@ -393,6 +467,7 @@ class AnswerService:
             )
             return
 
+        corpus_type = _detect_corpus_type(sources)
         source_ids = {s.work_canonical_id.lower() for s in sources}
         scanner = IncrementalCitationScanner(source_ids)
         user_message = _build_user_message(request.query, sources)
@@ -403,7 +478,7 @@ class AnswerService:
 
         try:
             async for chunk in self._llm.stream(
-                system_prompt=build_system_prompt(effective_style),
+                system_prompt=build_system_prompt(effective_style, corpus_type),
                 user_message=user_message,
                 model=request.model,
                 max_tokens=_MAX_TOKENS_BY_STYLE[effective_style],
